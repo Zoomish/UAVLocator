@@ -31,11 +31,7 @@ export class BotService implements OnModuleInit {
         await bot.setMyCommands([
             {
                 command: '/start',
-                description: '📋 Основное меню',
-            },
-            {
-                command: '/apply',
-                description: '🤖 Автоотклики',
+                description: 'Начальное меню',
             },
             {
                 command: '/settings',
@@ -58,16 +54,5 @@ export class BotService implements OnModuleInit {
             where: { user: { tgId } },
         })
         return bot
-    }
-
-    async findAllWithApply() {
-        return await this.botRepository.find({
-            where: {
-                waitingFor: 'apply',
-            },
-            relations: {
-                user: true,
-            },
-        })
     }
 }

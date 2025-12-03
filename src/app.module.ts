@@ -5,11 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AppController } from './app.controller'
 import { BotModule } from './bot/bot.module'
-import { DiscountModule } from './discount/discount.module'
-import { DiscountTaskService } from './tasks/discountService.service'
 import { GetActiveService } from './tasks/getActiveService.service'
-import { NotificationService } from './tasks/notificationService.service'
-import { UnlockUsersService } from './tasks/unlockUsers.service'
 import { UserModule } from './user/user.module'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('fs')
@@ -57,15 +53,10 @@ const fs = require('fs')
         ]),
         BotModule,
         UserModule,
-        DiscountModule,
     ],
     controllers: [AppController],
     providers: [
-        NotificationService,
         GetActiveService,
-        UnlockUsersService,
-        DiscountTaskService,
-        // ChangePlanService,
     ],
 })
 export class AppModule {}

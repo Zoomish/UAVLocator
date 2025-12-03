@@ -1,2 +1,2 @@
-export * from './needAuth.service'
+export * from './noSession.service'
 export * from './noCommands.service'

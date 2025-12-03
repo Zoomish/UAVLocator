@@ -7,6 +7,7 @@ import {
     HandleService,
     InputTextService,
     NoCommandsService,
+    NoSessionService,
     SettingsService,
     StartService,
 } from './services'
@@ -20,6 +21,8 @@ import {
         SettingsService,
         InputTextService,
         NoCommandsService,
+        NoSessionService
     ],
+    exports: [NoSessionService]
 })
 export class BotModule {}
