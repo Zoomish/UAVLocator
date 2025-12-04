@@ -1,17 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
-import { BotService } from 'src/bot/bot.service'
 import { UserService } from 'src/user/user.service'
 
 @Injectable()
 export class StartService {
-    private readonly logger = new Logger(StartService.name)
-
     constructor(
-        private readonly userService: UserService,
-        private readonly configService: ConfigService
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService
     ) {}
+    private readonly logger = new Logger(StartService.name)
 
     async startMessage() {
         const bot: TelegramBot = global.bot

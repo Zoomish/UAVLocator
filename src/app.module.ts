@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AppController } from './app.controller'
 import { BotModule } from './bot/bot.module'
+import { CheckMessagesService } from './tasks/checkMessagesService.service'
 import { GetActiveService } from './tasks/getActiveService.service'
 import { UserModule } from './user/user.module'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -27,10 +28,11 @@ const fs = require('fs')
                 autoLoadEntities: true,
                 synchronize: true,
                 migrationsRun: true,
-                ssl: {
-                    rejectUnauthorized: true,
-                    ca: fs.readFileSync('./ca.pem').toString(),
-                },
+                ssl: false,
+                // {
+                //     rejectUnauthorized: true,
+                //     ca: fs.readFileSync('./ca.pem').toString(),
+                // },
             }),
             inject: [ConfigService],
         }),
@@ -55,8 +57,6 @@ const fs = require('fs')
         UserModule,
     ],
     controllers: [AppController],
-    providers: [
-        GetActiveService,
-    ],
+    providers: [GetActiveService, CheckMessagesService],
 })
 export class AppModule {}

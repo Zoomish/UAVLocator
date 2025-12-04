@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Bot } from 'src/bot/entities/bot.entity'
 import { NoSessionService } from 'src/bot/services'
-import {  TelegramClient } from 'telegram'
-import { Repository } from 'typeorm'
+import { TelegramClient } from 'telegram'
+import { StringSession } from 'telegram/sessions'
+import { IsNull, Not, Repository } from 'typeorm'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { User } from './entities/user.entity'
@@ -49,6 +50,12 @@ export class UserService {
         return await this.userRepository.find()
     }
 
+    async findAllWithLocation() {
+        return await this.userRepository.find({
+            where: [{ locations: Not(IsNull()) }, { locations: Not('[]') }],
+        })
+    }
+
     async update(tgId: number, dto: UpdateUserDto) {
         const user = await this.findOne(tgId)
         return await this.userRepository.save(Object.assign(user, dto))
@@ -58,9 +65,14 @@ export class UserService {
         const apiId = this.configService.get('API_ID')
         const apiHash = this.configService.get('API_HASH')
         const session = this.configService.get('SESSION')
-        const client = new TelegramClient(session, apiId, apiHash, {
-            connectionRetries: 5,
-        })
+        const client = new TelegramClient(
+            new StringSession(session),
+            +apiId,
+            apiHash,
+            {
+                connectionRetries: 5,
+            }
+        )
         await client.connect()
         try {
             await client.getMe()
@@ -70,7 +82,74 @@ export class UserService {
                 this.noSessionService.NoSession(admin.tgId)
             }
         }
-        this.logger.log('✅ User Connected')
+        const users = await this.findAllWithLocation()
+        // Получаем канал
+        const channel = await client.getEntity('locatorru')
+
+        // Получаем все диалоги (чаты/каналы)
+        const dialogs = await client.getDialogs({})
+
+        // Находим наш канал в диалогах для получения непрочитанных
+        const channelDialog = dialogs.find((d) =>
+            d.entity.id.equals(channel.id)
+        )
+
+        if (!channelDialog) {
+            console.log('Канал не найден в диалогах')
+            await client.disconnect()
+            return
+        }
+
+        console.log(
+            `Непрочитанных сообщений в канале: ${channelDialog.unreadCount}`
+        )
+        for (const user of users) {
+        }
         await client.disconnect()
+    }
+    async monitorCommentsInRealTime() {
+        const apiId = this.configService.get('API_ID')
+        const apiHash = this.configService.get('API_HASH')
+        const session = this.configService.get('SESSION')
+        const channelUsername = '@TestZoomishChannel'
+        const client = new TelegramClient(
+            new StringSession(session),
+            +apiId,
+            apiHash,
+            {
+                connectionRetries: 5,
+            }
+        )
+        await client.connect()
+
+        const channel = await client.getEntity(channelUsername)
+        console.log(`📡 Мониторинг канала: ${channelUsername}`)
+
+        // Обработчик новых сообщений
+        client.addEventHandler(async (event) => {
+            const message = event.message
+            if (
+                message
+            ) {
+                // Только новые посты (не реплаи)
+                if (!message.replyTo) {
+                    console.log('\n📢 НОВЫЙ ПОСТ:')
+                    console.log(`ID: ${message.id}`)
+                    console.log(
+                        `Текст: ${message.message?.substring(0, 200) || 'Нет текста'}`
+                    )
+                    console.log(`Дата: ${message.date}`)
+
+                    // Ваша логика обработки поста
+                    // saveToDatabase(message);
+                    // sendNotification(message);
+                }
+            }
+        })
+
+        console.log('✅ Мониторинг запущен. Жду новые посты...')
+
+        // Держим соединение активным
+        await client.connect()
     }
 }

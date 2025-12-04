@@ -1,16 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { Interval } from '@nestjs/schedule'
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common'
 import { UserService } from '../user/user.service'
-import { ConfigService } from '@nestjs/config'
 
 @Injectable()
-export class CheckMessagesService {
+export class CheckMessagesService implements OnApplicationBootstrap {
     constructor(private readonly userService: UserService) {}
     private readonly logger = new Logger(CheckMessagesService.name)
 
-    @Interval(1000 * 60)
-    async handleTimeout() {
-        await this.userService.checkLocations()
+    async onApplicationBootstrap() {
+        await this.userService.monitorCommentsInRealTime()
         this.logger.log('Messages checked')
     }
 }

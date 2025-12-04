@@ -8,6 +8,8 @@ export class NoSessionService {
 
     async NoSession(tgId: number) {
         const bot: TelegramBot = global.bot
-        await bot.sendMessage(tgId, 'No session').catch((e) => this.logger.error(e))
+        await bot
+            .sendMessage(tgId, 'No session')
+            .catch((e) => this.logger.error(e))
     }
 }

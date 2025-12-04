@@ -5,6 +5,7 @@ import { UserService } from 'src/user/user.service'
 @Injectable()
 export class SettingsService {
     constructor(
+        @Inject(forwardRef(() => UserService))
         private readonly userService: UserService
     ) {}
     private readonly logger = new Logger(SettingsService.name)

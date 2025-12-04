@@ -5,7 +5,7 @@ import TelegramBot, * as telegram from 'node-telegram-bot-api'
 import { Repository } from 'typeorm'
 import { UpdateBotDto } from './dto/update-bot.dto'
 import { Bot } from './entities/bot.entity'
-import {  HandleService } from './services'
+import { HandleService } from './services'
 
 @Injectable()
 export class BotService implements OnModuleInit {

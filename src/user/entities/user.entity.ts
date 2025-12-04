@@ -25,7 +25,7 @@ export class User {
     @Column({ nullable: true })
     username: string
 
-    @Column({ nullable: true, array: true, type: 'varchar', default: [] })
+    @Column({ nullable: false, array: true, type: 'varchar', default: [] })
     locations: string[]
 
     @OneToOne(() => Bot, (bot) => bot.user, {

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { UserModule } from 'src/user/user.module'
 import { BotService } from './bot.service'
@@ -13,7 +13,7 @@ import {
 } from './services'
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Bot]), UserModule],
+    imports: [TypeOrmModule.forFeature([Bot]), forwardRef(() => UserModule)],
     providers: [
         BotService,
         HandleService,
@@ -21,8 +21,8 @@ import {
         SettingsService,
         InputTextService,
         NoCommandsService,
-        NoSessionService
+        NoSessionService,
     ],
-    exports: [NoSessionService]
+    exports: [NoSessionService],
 })
 export class BotModule {}
