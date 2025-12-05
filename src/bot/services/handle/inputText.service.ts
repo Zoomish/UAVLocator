@@ -2,7 +2,6 @@ import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
 import { BotService } from 'src/bot/bot.service'
 import { UserService } from 'src/user/user.service'
-import { NoCommandsService } from './helpActions'
 import { SettingsService } from './settings.service'
 
 @Injectable()
@@ -99,7 +98,7 @@ export class InputTextService {
                             )
                         )
                     await this.userService.update(msg.chat.id, {
-                        locations: text.split(','),
+                        locations: text.split(',').map(this.normalizeText),
                     })
                     await this.settingsService.settings(botService.msg_id)
                     break
@@ -127,5 +126,16 @@ export class InputTextService {
         } catch (error) {
             this.logger.error('Error in handleInputText: ' + error)
         }
+    }
+
+    private normalizeText(text: string): string {
+        return text
+            .toLowerCase()
+            .replace(/[ёе]/g, 'е')
+            .replace(/[йи]/g, 'и')
+            .replace(/[ъь]/g, '')
+            .replace(/[^а-я0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
     }
 }
