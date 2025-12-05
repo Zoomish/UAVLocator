@@ -15,7 +15,7 @@ export class GetAdminService {
         const msg: TelegramBot.Message = global.msg
         const users = await this.userService.findAll()
         const text =
-            'Панель администратора:\n\n' +
+            `Панель администратора:\n\n` +
             `👥 <b>Всего пользователей</b>: ${users.length}\n` +
             ' '.repeat(Math.random() * 100)
         const reply_markup = {

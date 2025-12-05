@@ -15,6 +15,5 @@ export class GetActiveService {
             await this.userService.update(user.tgId, { admin: true })
             this.logger.log('Admin updated')
         }
-        this.logger.log('Get server Active!')
     }
 }

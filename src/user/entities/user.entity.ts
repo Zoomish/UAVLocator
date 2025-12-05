@@ -26,7 +26,7 @@ export class User {
     username: string
 
     @Column({ nullable: false, array: true, type: 'varchar', default: [] })
-    locations: string
+    locations: string[]
 
     @OneToOne(() => Bot, (bot) => bot.user, {
         cascade: true,

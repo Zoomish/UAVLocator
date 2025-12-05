@@ -61,10 +61,9 @@ export class GetAdminCallbackService {
             `Пользователь <code>${user.tgId}</code>: @` +
             user.username +
             '\n\n' +
-            '🪪 <b>Подписка:</b> ' +
-            '\n' +
-            '👤 <b>Администратор:</b> ' +
-            (user.admin ? '✅' : '❌')
+            '🗺️ <b>Локации:</b> ' +
+            user.locations.join(', ')
+        '\n' + '👤 <b>Администратор:</b> ' + (user.admin ? '✅' : '❌')
         const reply_markup = {
             inline_keyboard: [
                 [
