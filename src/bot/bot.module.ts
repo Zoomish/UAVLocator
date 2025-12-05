@@ -16,6 +16,7 @@ import {
     NoSessionService,
     SendInfoService,
     SetAdminCallbackService,
+    SetLocationsCallbackService,
     SettingsService,
     StartService,
 } from './services'
@@ -38,6 +39,7 @@ import {
         SetAdminCallbackService,
         GetAdminCallbackService,
         HandleCancelService,
+        SetLocationsCallbackService,
     ],
     exports: [NoSessionService, SendInfoService],
 })

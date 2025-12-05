@@ -3,17 +3,20 @@ import TelegramBot from 'node-telegram-bot-api'
 import { BotService } from 'src/bot/bot.service'
 import { UserService } from 'src/user/user.service'
 import { NoCommandsService } from './helpActions'
+import { SettingsService } from './settings.service'
 
 @Injectable()
 export class InputTextService {
-    private readonly logger = new Logger(InputTextService.name)
-
     constructor(
         private readonly botService: BotService,
         private readonly noCommandsService: NoCommandsService,
         @Inject(forwardRef(() => UserService))
-        private readonly userService: UserService
+        private readonly userService: UserService,
+
+        @Inject(forwardRef(() => SettingsService))
+        private readonly settingsService: SettingsService
     ) {}
+    private readonly logger = new Logger(InputTextService.name)
 
     async handleInputText(text: string) {
         const bot: TelegramBot = global.bot
@@ -86,6 +89,20 @@ export class InputTextService {
                                 'Failed to edit message text (error): ' + error
                             )
                         )
+                    break
+                }
+                case 'locations': {
+                    await bot
+                        .deleteMessage(msg.chat.id, msg.message_id)
+                        .catch((error) =>
+                            this.logger.error(
+                                'Failed to delete message (error): ' + error
+                            )
+                        )
+                    await this.userService.update(msg.chat.id, {
+                        locations: text.split(','),
+                    })
+                    await this.settingsService.settings(botService.msg_id)
                     break
                 }
                 default: {

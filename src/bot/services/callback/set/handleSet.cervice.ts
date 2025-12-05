@@ -2,13 +2,15 @@ import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
 import { BotService } from 'src/bot/bot.service'
 import { SetAdminCallbackService } from './admin'
+import { SetLocationsCallbackService } from './locations'
 
 @Injectable()
 export class HandleSetService {
     constructor(
         private readonly setAdminCallbackService: SetAdminCallbackService,
         @Inject(forwardRef(() => BotService))
-        private readonly botService: BotService
+        private readonly botService: BotService,
+        private readonly setLocationsCallbackService: SetLocationsCallbackService
     ) {}
 
     private readonly logger = new Logger(HandleSetService.name)
@@ -21,6 +23,11 @@ export class HandleSetService {
             case 'admin': {
                 return await this.setAdminCallbackService.handleSetAdmin(
                     texts[1],
+                    callbackQuery
+                )
+            }
+            case 'locations': {
+                return await this.setLocationsCallbackService.handleSetLocations(
                     callbackQuery
                 )
             }

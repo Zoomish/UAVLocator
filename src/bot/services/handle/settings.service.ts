@@ -39,7 +39,7 @@ export class SettingsService {
                     {
                         text: `${user.notifications ? '🔕' : '🔔'} Уведомления`,
                         callback_data:
-                            'set_notifications=' + user.notifications
+                            'set_notifications-' + user.notifications
                                 ? 'false'
                                 : 'true',
                     },
