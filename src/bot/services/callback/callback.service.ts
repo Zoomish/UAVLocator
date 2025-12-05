@@ -1,16 +1,43 @@
-import { Injectable } from '@nestjs/common'
+import { forwardRef, Inject, Injectable } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
+import { BotService } from 'src/bot/bot.service'
+import { HandleGetService } from './get'
+import { HandleSetService } from './set'
 
 @Injectable()
 export class CallbackService {
-    constructor() {}
+    constructor(
+        @Inject(forwardRef(() => BotService))
+        private readonly botService: BotService,
+        private readonly handleSetService: HandleSetService,
+        private readonly handleGetService: HandleGetService
+    ) {}
+
     async handleCallback(callbackQuery: TelegramBot.CallbackQuery) {
-        const text = callbackQuery.data
+        const texts = callbackQuery.data.split('_')
         global.msg = callbackQuery.message
 
-        switch (text) {
+        const botService = await this.botService.findOne(
+            callbackQuery.message.chat.id
+        )
+        if (botService.waitingFor !== null) {
+            const bot: TelegramBot = global.bot
+            return bot.answerCallbackQuery(callbackQuery.id, {
+                text: 'Бот пока недоступен для взаимодействия. Подождите пожалуйста',
+            })
+        }
+
+        switch (texts[0]) {
             case 'set':
+                return await this.handleSetService.handleSet(
+                    texts[1],
+                    callbackQuery
+                )
             case 'get':
+                return await this.handleGetService.handleGet(
+                    texts[1],
+                    callbackQuery
+                )
         }
     }
 }
