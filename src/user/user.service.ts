@@ -115,7 +115,7 @@ export class UserService {
         })
 
         const channel = await client.getEntity(channelUsername)
-        this.logger.log(`📡 Мониторинг канала: ${channelUsername}`)
+        this.logger.log(`📡 Monitoring Channel: ${channelUsername}`)
 
         client.addEventHandler(async (event) => {
             const message = event.message
@@ -130,10 +130,16 @@ export class UserService {
                         this.sendInfoService.sendInfo(user.tgId, text)
                     }
                 }
+                await client.invoke(
+                    new Api.channels.ReadHistory({
+                        channel: channel,
+                        maxId: message.id,
+                    })
+                )
             }
         })
 
-        console.log('✅ Мониторинг запущен. Жду новые посты...')
+        this.logger.log('✅ Monitoring started')
 
         await client.connect()
     }

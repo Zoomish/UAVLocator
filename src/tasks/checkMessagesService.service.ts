@@ -9,6 +9,5 @@ export class CheckMessagesService implements OnApplicationBootstrap {
     async onApplicationBootstrap() {
         await this.userService.checkUnreadMessages()
         await this.userService.monitorCommentsInRealTime()
-        this.logger.log('Messages checked')
     }
 }
