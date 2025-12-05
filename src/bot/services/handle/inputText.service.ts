@@ -97,8 +97,6 @@ export class InputTextService {
                                 'Failed to delete message (error): ' + error
                             )
                         )
-                    console.log(text.split(',').map(this.normalizeText))
-
                     await this.userService.update(msg.chat.id, {
                         locations: text.split(',').map(this.normalizeText),
                     })
