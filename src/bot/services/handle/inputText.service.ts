@@ -9,7 +9,6 @@ import { SettingsService } from './settings.service'
 export class InputTextService {
     constructor(
         private readonly botService: BotService,
-        private readonly noCommandsService: NoCommandsService,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
 

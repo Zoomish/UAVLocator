@@ -1,6 +1,8 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
 import { BotService } from 'src/bot/bot.service'
+import { UserService } from 'src/user/user.service'
+import { SettingsService } from '../../handle'
 import { SetAdminCallbackService } from './admin'
 import { SetLocationsCallbackService } from './locations'
 
@@ -10,7 +12,11 @@ export class HandleSetService {
         private readonly setAdminCallbackService: SetAdminCallbackService,
         @Inject(forwardRef(() => BotService))
         private readonly botService: BotService,
-        private readonly setLocationsCallbackService: SetLocationsCallbackService
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
+        private readonly setLocationsCallbackService: SetLocationsCallbackService,
+        @Inject(forwardRef(() => SettingsService))
+        private readonly settingsService: SettingsService
     ) {}
 
     private readonly logger = new Logger(HandleSetService.name)
@@ -31,33 +37,16 @@ export class HandleSetService {
                     callbackQuery
                 )
             }
-            case 'error': {
+            case 'notifications': {
                 bot.answerCallbackQuery(callbackQuery.id, {
-                    text: 'Напишите пожалуйста ошибку',
+                    text: 'Вы ',
                 })
-                await this.botService.update(callbackQuery.message.chat.id, {
-                    waitingFor: 'error',
-                    msg_id: callbackQuery.message.message_id,
+                await this.userService.update(callbackQuery.message.chat.id, {
+                    notifications: texts[1] === 'true',
                 })
-                await bot
-                    .editMessageText(
-                        '⚠️ <b>Опишите ошибку, с которой вы столкнулись:</b>\n\n' +
-                            'Пожалуйста, подробно опишите, что именно пошло не так. 🤔\n' +
-                            'Укажите, на каком этапе произошла ошибка, что вы делали перед этим и что именно не сработало.\n' +
-                            'Чем подробнее будет ваш ответ — тем быстрее мы сможем всё исправить! 🔧💬' +
-                            ' '.repeat(Math.random() * 100),
-                        {
-                            chat_id: callbackQuery.message.chat.id,
-                            message_id: callbackQuery.message.message_id,
-                            parse_mode: 'HTML',
-                        }
-                    )
-                    .catch((error) =>
-                        this.logger.error(
-                            'Error editing message text (error): ' + error
-                        )
-                    )
-                return
+                return await this.settingsService.settings(
+                    callbackQuery.message.message_id
+                )
             }
         }
     }
