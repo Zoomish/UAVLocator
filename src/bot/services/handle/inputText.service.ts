@@ -97,6 +97,8 @@ export class InputTextService {
                                 'Failed to delete message (error): ' + error
                             )
                         )
+                    console.log(text.split(',').map(this.normalizeText))
+
                     await this.userService.update(msg.chat.id, {
                         locations: text.split(',').map(this.normalizeText),
                     })
@@ -133,7 +135,6 @@ export class InputTextService {
             .toLowerCase()
             .replace(/[ёе]/g, 'е')
             .replace(/[йи]/g, 'и')
-            .replace(/[ъь]/g, '')
             .replace(/[^а-я0-9\s]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()

@@ -65,6 +65,7 @@ export class UserService {
                 )`,
                     { message: normalizedMessage }
                 ),
+                notifications: true,
             },
         })
     }
@@ -74,7 +75,6 @@ export class UserService {
             .toLowerCase()
             .replace(/[ёе]/g, 'е')
             .replace(/[йи]/g, 'и')
-            .replace(/[ъь]/g, '')
             .replace(/[^а-я0-9\s]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
