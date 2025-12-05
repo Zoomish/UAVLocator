@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
 import TelegramBot from 'node-telegram-bot-api'
-import { BotService } from 'src/bot/bot.service'
 
 @Injectable()
 export class NoSessionService {

@@ -11,5 +11,8 @@ export class UpdateUserDto {
     admin?: boolean
 
     @IsOptional()
+    locations?: string[]
+
+    @IsOptional()
     expires_in?: Date
 }
