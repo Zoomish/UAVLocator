@@ -39,6 +39,10 @@ export class BotService implements OnModuleInit {
                 command: '/settings',
                 description: '⚙️ Настройки',
             },
+            {
+                command: '/error',
+                description: '⚠️ Сообщить об ошибке',
+            },
         ])
         bot.on('message', async (msg: TelegramBot.Message) => {
             return await this.handleService.handleMessage(msg)
