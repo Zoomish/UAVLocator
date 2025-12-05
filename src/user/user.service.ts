@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Bot } from 'src/bot/entities/bot.entity'
 import { NoSessionService, SendInfoService } from 'src/bot/services'
-import { TelegramClient } from 'telegram'
+import { Api, TelegramClient } from 'telegram'
 import { StringSession } from 'telegram/sessions'
 import { Raw, Repository } from 'typeorm'
 import { CreateUserDto } from './dto/create-user.dto'
@@ -82,7 +82,15 @@ export class UserService {
 
     async update(tgId: number, dto: UpdateUserDto) {
         const user = await this.findOne(tgId)
-        return await this.userRepository.save(Object.assign(user, dto))
+        const normalizedLocations = dto.locations.map((location) =>
+            this.normalizeText(location)
+        )
+        return await this.userRepository.save(
+            Object.assign(user, {
+                ...dto,
+                locations: normalizedLocations,
+            })
+        )
     }
 
     async monitorCommentsInRealTime() {
@@ -128,5 +136,83 @@ export class UserService {
         console.log('✅ Мониторинг запущен. Жду новые посты...')
 
         await client.connect()
+    }
+
+    async checkUnreadMessages() {
+        const apiId = this.configService.get('API_ID')
+        const apiHash = this.configService.get('API_HASH')
+        const session = this.configService.get('SESSION')
+        const channelUsername = this.configService.get('CHANNEL')
+        const client = new TelegramClient(
+            new StringSession(session),
+            +apiId,
+            apiHash,
+            {
+                connectionRetries: 5,
+            }
+        )
+        await client.connect().catch(async (e) => {
+            this.logger.error(e)
+            const admin = await this.findAdmin()
+            if (admin) {
+                this.noSessionService.NoSession(admin.tgId)
+            }
+        })
+        const channel = await client.getEntity(channelUsername)
+
+        const dialogs = await client.getDialogs({})
+        const channelDialog = dialogs.find((d) =>
+            d.entity.id.equals(channel.id)
+        )
+
+        if (!channelDialog) {
+            this.logger.error('Канал не найден в диалогах')
+            return []
+        }
+        if (channelDialog.unreadCount > 0) {
+            const fullChannel = await client.invoke(
+                new Api.channels.GetFullChannel({
+                    channel: channel,
+                })
+            )
+            const result = await client.invoke(
+                new Api.messages.GetHistory({
+                    peer: channel,
+                    limit: Math.min(channelDialog.unreadCount + 10, 100),
+                    offsetId: 0,
+                    offsetDate: 0,
+                    addOffset: 0,
+                    maxId: 0,
+                    minId: 0,
+                })
+            )
+
+            // @ts-ignore
+            const messages = result.messages
+
+            const unreadMessages = messages.filter(
+                // @ts-ignore
+                (msg) => msg.id > fullChannel.fullChat.readInboxMaxId
+            )
+            for (const message of unreadMessages) {
+                const text = message.message.replace(
+                    '📡Локатор России - @locatorru',
+                    ''
+                )
+                const users = await this.findAllWithLocation(text)
+                for (const user of users) {
+                    this.sendInfoService.sendInfo(user.tgId, text)
+                }
+
+                await client.invoke(
+                    new Api.channels.ReadHistory({
+                        channel: channel,
+                        maxId: message.id,
+                    })
+                )
+            }
+
+            await client.disconnect()
+        }
     }
 }

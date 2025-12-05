@@ -7,6 +7,7 @@ export class CheckMessagesService implements OnApplicationBootstrap {
     private readonly logger = new Logger(CheckMessagesService.name)
 
     async onApplicationBootstrap() {
+        await this.userService.checkUnreadMessages()
         await this.userService.monitorCommentsInRealTime()
         this.logger.log('Messages checked')
     }
