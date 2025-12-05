@@ -4,6 +4,7 @@ import { UserModule } from 'src/user/user.module'
 import { BotService } from './bot.service'
 import { Bot } from './entities/bot.entity'
 import {
+    GetAdminService,
     HandleService,
     InputTextService,
     NoCommandsService,
@@ -12,6 +13,7 @@ import {
     SettingsService,
     StartService,
 } from './services'
+import { CallbackService } from './services/callback'
 
 @Module({
     imports: [TypeOrmModule.forFeature([Bot]), forwardRef(() => UserModule)],
@@ -24,6 +26,8 @@ import {
         NoCommandsService,
         NoSessionService,
         SendInfoService,
+        GetAdminService,
+        CallbackService,
     ],
     exports: [NoSessionService, SendInfoService],
 })

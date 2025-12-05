@@ -6,6 +6,7 @@ import { Repository } from 'typeorm'
 import { UpdateBotDto } from './dto/update-bot.dto'
 import { Bot } from './entities/bot.entity'
 import { HandleService } from './services'
+import { CallbackService } from './services/callback'
 
 @Injectable()
 export class BotService implements OnModuleInit {
@@ -14,7 +15,8 @@ export class BotService implements OnModuleInit {
         private readonly handleService: HandleService,
         private readonly configService: ConfigService,
         @InjectRepository(Bot)
-        private readonly botRepository: Repository<Bot>
+        private readonly botRepository: Repository<Bot>,
+        private readonly callbackService: CallbackService
     ) {}
 
     async onModuleInit() {
@@ -40,6 +42,9 @@ export class BotService implements OnModuleInit {
         ])
         bot.on('message', async (msg: TelegramBot.Message) => {
             return await this.handleService.handleMessage(msg)
+        })
+        bot.on('callback_query', async (callbackQuery) => {
+            await this.callbackService.handleCallback(callbackQuery)
         })
     }
     async update(tgId: number, dto: UpdateBotDto) {

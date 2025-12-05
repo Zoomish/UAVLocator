@@ -82,15 +82,7 @@ export class UserService {
 
     async update(tgId: number, dto: UpdateUserDto) {
         const user = await this.findOne(tgId)
-        const normalizedLocations = dto.locations.map((location) =>
-            this.normalizeText(location)
-        )
-        return await this.userRepository.save(
-            Object.assign(user, {
-                ...dto,
-                locations: normalizedLocations,
-            })
-        )
+        return await this.userRepository.save(Object.assign(user, dto))
     }
 
     async monitorCommentsInRealTime() {
@@ -217,6 +209,10 @@ export class UserService {
                     })
                 )
             }
+
+            this.logger.log(
+                `✅ Checked ${unreadMessages.length} unread messages`
+            )
 
             await client.disconnect()
         }
