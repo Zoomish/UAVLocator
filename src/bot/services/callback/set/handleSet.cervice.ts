@@ -39,7 +39,7 @@ export class HandleSetService {
             }
             case 'notifications': {
                 bot.answerCallbackQuery(callbackQuery.id, {
-                    text: 'Вы ',
+                    text: `Вы ${texts[1] === 'true' ? 'включаете' : 'выключаете'} уведомления`,
                 })
                 await this.userService.update(callbackQuery.message.chat.id, {
                     notifications: texts[1] === 'true',
