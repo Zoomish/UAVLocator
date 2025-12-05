@@ -7,6 +7,7 @@ import {
     CallbackService,
     GetAdminCallbackService,
     GetAdminService,
+    HandleCancelService,
     HandleGetService,
     HandleService,
     HandleSetService,
@@ -36,6 +37,7 @@ import {
         HandleGetService,
         SetAdminCallbackService,
         GetAdminCallbackService,
+        HandleCancelService,
     ],
     exports: [NoSessionService, SendInfoService],
 })

@@ -8,6 +8,9 @@ export class UpdateUserDto {
     username?: string
 
     @IsOptional()
+    notifications?: boolean
+
+    @IsOptional()
     admin?: boolean
 
     @IsOptional()

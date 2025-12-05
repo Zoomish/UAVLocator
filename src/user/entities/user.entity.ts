@@ -19,6 +19,9 @@ export class User {
     @Column({ nullable: false, default: false })
     admin: boolean
 
+    @Column({ nullable: false, default: true })
+    notifications: boolean
+
     @Column({ nullable: false })
     name: string
 
