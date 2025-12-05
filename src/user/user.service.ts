@@ -5,7 +5,7 @@ import { Bot } from 'src/bot/entities/bot.entity'
 import { NoSessionService } from 'src/bot/services'
 import { TelegramClient } from 'telegram'
 import { StringSession } from 'telegram/sessions'
-import { Repository } from 'typeorm'
+import { Raw, Repository } from 'typeorm'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { User } from './entities/user.entity'
@@ -50,9 +50,27 @@ export class UserService {
         return await this.userRepository.find()
     }
 
-    async findAllWithLocation() {
-        const users = await this.findAll()
-        return users.filter((user) => user.locations.length > 0)
+    async findAllWithLocation(message: string) {
+        const normalizedMessage = this.normalizeText(message)
+
+        return this.userRepository.find({
+            where: {
+                pattern: Raw((alias) => `position(${alias} in :message) > 0`, {
+                    message: normalizedMessage,
+                }),
+            },
+        })
+    }
+
+    private normalizeText(text: string): string {
+        return text
+            .toLowerCase()
+            .replace(/[ёе]/g, 'е')
+            .replace(/[йи]/g, 'и')
+            .replace(/[ъь]/g, '')
+            .replace(/[^а-я0-9\s]/g, ' ') 
+            .replace(/\s+/g, ' ')
+            .trim()
     }
 
     async update(tgId: number, dto: UpdateUserDto) {
@@ -88,7 +106,9 @@ export class UserService {
             const message = event.message
             if (message && channel.id.equals(message?.peerId?.channelId)) {
                 if (!message.replyTo) {
-                    const users = await this.findAllWithLocation()
+                    const users = await this.findAllWithLocation(
+                        message.message
+                    )
                     console.log(users)
 
                     console.log('\n📢 НОВЫЙ ПОСТ:')

@@ -13,17 +13,7 @@ async function bootstrap() {
     })
     app.setGlobalPrefix('api')
     app.use(helmet())
-    app.enableCors({
-        origin: (origin, callback) => {
-            const allowedOrigins = ['https://web.telegram.org', 'https://t.me']
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true)
-            } else {
-                callback(new Error('Not allowed by CORS'))
-            }
-        },
-        credentials: true,
-    })
+    app.enableCors()
 
     await app.listen(3000, async () => {
         console.log(`Server started on port ${await app.getUrl()}`)
