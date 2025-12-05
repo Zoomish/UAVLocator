@@ -39,6 +39,16 @@ export class SetLocationsCallbackService {
                     chat_id: callbackQuery.message.chat.id,
                     message_id: callbackQuery.message.message_id,
                     parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '❌ Отмена',
+                                    callback_data: 'cancel_locations',
+                                },
+                            ],
+                        ],
+                    },
                 }
             )
             .catch((error) =>
