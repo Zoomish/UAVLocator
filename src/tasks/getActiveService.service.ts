@@ -7,7 +7,7 @@ export class GetActiveService {
     constructor(private readonly userService: UserService) {}
     private readonly logger = new Logger(GetActiveService.name)
 
-    @Interval(1000 * 60 * 10)
+    @Interval(1000 * 60 * 60)
     async handleTimeout() {
         const user = await this.userService.findAdmin()
         if (user) {
