@@ -28,11 +28,10 @@ const fs = require('fs')
                 autoLoadEntities: true,
                 synchronize: true,
                 migrationsRun: true,
-                ssl: false,
-                // {
-                //     rejectUnauthorized: true,
-                //     ca: fs.readFileSync('./ca.pem').toString(),
-                // },
+                ssl: {
+                    rejectUnauthorized: true,
+                    ca: fs.readFileSync('./ca.pem').toString(),
+                },
             }),
             inject: [ConfigService],
         }),
