@@ -24,7 +24,9 @@ export class SetAdminCallbackService {
                 let user = await this.userService.findOne(+texts[1])
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: `Вы ${user.admin ? 'убираете' : 'делаете'} пользователя админом`,
-                })
+                }).catch((error) =>
+                    this.logger.error('Error answering callback: ' + error)
+                )
                 user = await this.userService.update(+texts[1], {
                     admin: !user.admin,
                 })

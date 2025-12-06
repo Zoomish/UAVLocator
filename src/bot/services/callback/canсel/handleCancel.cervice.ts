@@ -29,7 +29,9 @@ export class HandleCancelService {
             case 'error': {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: `Вы отменили отправку ошибки`,
-                })
+                }).catch((error) =>
+                    this.logger.error('Error answering callback: ' + error)
+                )
                 await bot
                     .deleteMessage(
                         callbackQuery.message.chat.id,
@@ -55,7 +57,9 @@ export class HandleCancelService {
             case 'locations': {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: `Вы отменили отправку локаций`,
-                })
+                }).catch((error) =>
+                    this.logger.error('Error answering callback: ' + error)
+                )
                 return await this.settingsService.settings(botService.msg_id)
             }
         }

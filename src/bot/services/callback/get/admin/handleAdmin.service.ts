@@ -25,7 +25,9 @@ export class GetAdminCallbackService {
             case undefined: {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: 'Меню администратора',
-                })
+                }).catch((error) =>
+                    this.logger.error('Error answering callback: ' + error)
+                )
                 return await this.getAdminService.getAdmin(
                     callbackQuery.message.message_id
                 )
@@ -33,7 +35,9 @@ export class GetAdminCallbackService {
             case 'users': {
                 bot.answerCallbackQuery(callbackQuery.id, {
                     text: 'Получить всех пользователей',
-                })
+                }).catch((error) =>
+                    this.logger.error('Error answering callback: ' + error)
+                )
                 return await this.handleGetAdminUsers()
             }
         }

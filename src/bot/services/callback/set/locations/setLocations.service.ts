@@ -15,7 +15,9 @@ export class SetLocationsCallbackService {
 
         bot.answerCallbackQuery(callbackQuery.id, {
             text: 'Перечислите локации',
-        })
+        }).catch((error) =>
+            this.logger.error('Error answering callback: ' + error)
+        )
         await this.botService.update(callbackQuery.message.chat.id, {
             waitingFor: 'locations',
             msg_id: callbackQuery.message.message_id,
