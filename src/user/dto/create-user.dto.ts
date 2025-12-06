@@ -9,7 +9,4 @@ export class CreateUserDto {
 
     @IsNotEmpty()
     tgId: number
-
-    @IsNotEmpty()
-    expires_in: Date
 }

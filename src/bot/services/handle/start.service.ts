@@ -20,6 +20,12 @@ export class StartService {
                 username: msg.chat.username,
                 name: msg.chat.first_name,
             })
+        }else{
+            user = await this.userService.create({
+                tgId: msg.chat.id,
+                username: msg.chat.username,
+                name: msg.chat.first_name,
+            })
         }
 
         await bot
