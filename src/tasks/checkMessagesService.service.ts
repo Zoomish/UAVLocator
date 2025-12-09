@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common'
 import { UserService } from '../user/user.service'
+import { Interval } from '@nestjs/schedule'
 
 @Injectable()
 export class CheckMessagesService implements OnApplicationBootstrap {
@@ -8,6 +9,9 @@ export class CheckMessagesService implements OnApplicationBootstrap {
 
     async onApplicationBootstrap() {
         await this.userService.checkUnreadMessages()
-        await this.userService.monitorCommentsInRealTime()
+    }
+    @Interval(1000 * 60)
+    async handleTimeout() {
+        await this.userService.checkUnreadMessages()
     }
 }
