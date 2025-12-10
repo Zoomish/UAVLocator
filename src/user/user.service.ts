@@ -112,15 +112,13 @@ export class UserService {
         client.addEventHandler(async (event) => {
             const message = event.message
             if (message && channel.id.equals(message?.peerId?.channelId)) {
-                if (!message.replyTo) {
-                    const text = message.message.replace(
-                        '📡Локатор России - @locatorru',
-                        ''
-                    )
-                    const users = await this.findAllWithLocation(text)
-                    for (const user of users) {
-                        this.sendInfoService.sendInfo(user.tgId, text)
-                    }
+                const text = message.message.replace(
+                    '📡Локатор России - @locatorru',
+                    ''
+                )
+                const users = await this.findAllWithLocation(text)
+                for (const user of users) {
+                    this.sendInfoService.sendInfo(user.tgId, text)
                 }
                 await client.invoke(
                     new Api.channels.ReadHistory({
@@ -147,6 +145,10 @@ export class UserService {
             apiHash,
             {
                 connectionRetries: 5,
+                timeout: 10000,
+                useWSS: true,
+                retryDelay: 3000,
+                autoReconnect: true,
             }
         )
         await client.connect().catch(async (e) => {
@@ -193,7 +195,24 @@ export class UserService {
                 (msg) => msg.id > fullChannel.fullChat.readInboxMaxId
             )
             for (const message of unreadMessages) {
-                const text = message.message.replace(
+                if (!message.message) {
+                    continue
+                }
+                let text = ''
+                if (message?.replyTo) {
+                    const reply = await client.invoke(
+                        new Api.channels.GetMessages({
+                            channel: channel,
+                            id: [message.replyTo.replyToMsgId],
+                        })
+                    )
+                    // @ts-ignore
+                    text += `<blockquote expandable>${reply?.messages?.[0]?.message?.replace(
+                        '📡Локатор России - @locatorru',
+                        ''
+                    )}</blockquote>`
+                }
+                text += message.message.replace(
                     '📡Локатор России - @locatorru',
                     ''
                 )

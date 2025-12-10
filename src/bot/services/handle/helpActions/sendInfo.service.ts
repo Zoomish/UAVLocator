@@ -7,6 +7,10 @@ export class SendInfoService {
 
     async sendInfo(tgId: number, message: string) {
         const bot: TelegramBot = global.bot
-        await bot.sendMessage(tgId, message).catch((e) => this.logger.error(e))
+        await bot
+            .sendMessage(tgId, message, {
+                parse_mode: 'HTML',
+            })
+            .catch((e) => this.logger.error(e))
     }
 }
