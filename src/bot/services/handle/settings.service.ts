@@ -43,6 +43,12 @@ export class SettingsService {
                             (user.notifications ? 'false' : 'true'),
                     },
                 ],
+                [
+                    {
+                        text: '❤️ Поддержать проект',
+                        url: 'https://pay.cloudtips.ru/p/8d8b98bb',
+                    },
+                ],
                 user.admin
                     ? [{ text: '🛠️ Админка', callback_data: 'get_admin' }]
                     : [],
