@@ -73,8 +73,6 @@ export class UserService {
     private normalizeText(text: string): string {
         return text
             .toLowerCase()
-            .replace(/[ёе]/g, 'е')
-            .replace(/[йи]/g, 'и')
             .replace(/[^а-я0-9\s]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
