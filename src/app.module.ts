@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { AppController } from './app.controller'
 import { BotModule } from './bot/bot.module'
 import { CheckMessagesService } from './tasks/checkMessagesService.service'
+import { DbKeepAlive } from './tasks/entities/db-keep-alive.entity'
 import { GetActiveService } from './tasks/getActiveService.service'
 import { UserModule } from './user/user.module'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -54,6 +55,7 @@ const fs = require('fs')
         ]),
         BotModule,
         UserModule,
+        TypeOrmModule.forFeature([DbKeepAlive]),
     ],
     controllers: [AppController],
     providers: [GetActiveService, CheckMessagesService],

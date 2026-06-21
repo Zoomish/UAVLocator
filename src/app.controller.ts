@@ -6,7 +6,7 @@ export class AppController {
     constructor(private readonly getActiveService: GetActiveService) {}
     @Get()
     async AAA() {
-        await this.getActiveService.handleTimeout()
+        await this.getActiveService.ping()
         return {
             message: 'Hello World!',
         }
