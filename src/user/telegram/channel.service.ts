@@ -23,7 +23,11 @@ export class ChannelService {
 
     async getChannelDialogs() {
         const client = await this.telegramClientService.getClient()
-        return await client.getDialogs({})
+        const [main, archived] = await Promise.all([
+            client.getDialogs({}),
+            client.getDialogs({ archived: true }),
+        ])
+        return [...main, ...archived]
     }
 
     async getChannelFullInfo(channel: any) {
