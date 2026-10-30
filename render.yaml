@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: uavlocator
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/app
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: TG_SESSION
+        sync: false
+      - key: CHANNEL
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_DATABASE
+        sync: false
