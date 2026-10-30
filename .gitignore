@@ -2,6 +2,8 @@
 /dist
 /node_modules
 /build
+/bin
+/data
 *.pem
 # Logs
 logs

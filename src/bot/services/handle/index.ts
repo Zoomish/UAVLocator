@@ -1,6 +1,0 @@
-export * from './helpActions'
-export * from './inputText.service'
-export * from './settings.service'
-export * from './start.service'
-export * from './admin/getAdmin.service'
-export * from './error/setError.service'

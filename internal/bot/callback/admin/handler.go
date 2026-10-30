@@ -1,0 +1,131 @@
+package admin
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"locatorbpla/internal/bot/cb"
+	"locatorbpla/internal/bot/screen"
+	"locatorbpla/internal/bot/view"
+	"locatorbpla/internal/domain"
+	"locatorbpla/internal/repository"
+)
+
+type Handler struct {
+	Users  *repository.Users
+	Screen *screen.Screen
+}
+
+func (h *Handler) Open(ctx context.Context, q cb.Query) error {
+	if _, err := h.require(ctx, q); err != nil {
+		return err
+	}
+	h.Screen.Toast(q.ID, "Меню администратора")
+	return h.home(ctx, q)
+}
+
+func (h *Handler) UsersPage(ctx context.Context, q cb.Query, rest string) error {
+	if _, err := h.require(ctx, q); err != nil {
+		return err
+	}
+	h.Screen.Toast(q.ID, "Получить всех пользователей")
+	page := pageFrom(rest)
+	users, err := h.Users.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list users: %w", err)
+	}
+	text, kb := view.AdminUsers(users, page)
+	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
+		return fmt.Errorf("admin users: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) Toggle(ctx context.Context, q cb.Query, rest string) error {
+	if _, err := h.require(ctx, q); err != nil {
+		return err
+	}
+	target, page, err := parseTarget(rest)
+	if err != nil {
+		h.Screen.Toast(q.ID, "Некорректный пользователь")
+		return nil
+	}
+	user, err := h.Users.ToggleAdmin(ctx, target)
+	if err != nil {
+		return fmt.Errorf("toggle admin: %w", err)
+	}
+	verb := "убираете"
+	if user.Admin {
+		verb = "делаете"
+	}
+	h.Screen.Toast(q.ID, "Вы "+verb+" пользователя админом")
+	users, err := h.Users.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list users: %w", err)
+	}
+	text, kb := view.AdminUsers(users, page)
+	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
+		return fmt.Errorf("admin refresh: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) home(ctx context.Context, q cb.Query) error {
+	users, err := h.Users.List(ctx)
+	if err != nil {
+		return fmt.Errorf("count users: %w", err)
+	}
+	text, kb := view.AdminHome(len(users))
+	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
+		return fmt.Errorf("admin home: %w", err)
+	}
+	return nil
+}
+
+func (h *Handler) require(ctx context.Context, q cb.Query) (domain.User, error) {
+	user, err := h.Users.Find(ctx, q.ChatID)
+	if err != nil {
+		return domain.User{}, fmt.Errorf("admin user: %w", err)
+	}
+	if !user.Admin {
+		h.Screen.Toast(q.ID, "Недоступно")
+		return domain.User{}, errDenied
+	}
+	return user, nil
+}
+
+var errDenied = fmt.Errorf("not admin")
+
+func IsDenied(err error) bool {
+	return err == errDenied
+}
+
+func pageFrom(rest string) int {
+	if rest == "" {
+		return 0
+	}
+	head, _, _ := strings.Cut(rest, "-")
+	n, err := strconv.Atoi(head)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
+func parseTarget(rest string) (int64, int, error) {
+	idPart, pagePart, _ := strings.Cut(rest, "-")
+	id, err := strconv.ParseInt(idPart, 10, 64)
+	if err != nil || id == 0 {
+		return 0, 0, fmt.Errorf("id")
+	}
+	page := 0
+	if pagePart != "" {
+		page, err = strconv.Atoi(pagePart)
+		if err != nil || page < 0 {
+			page = 0
+		}
+	}
+	return id, page, nil
+}
