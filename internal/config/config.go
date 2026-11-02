@@ -42,19 +42,12 @@ func Load() (Config, error) {
 		APIHash:        strings.TrimSpace(os.Getenv("API_HASH")),
 		TGSession:      strings.TrimSpace(os.Getenv("TG_SESSION")),
 		Channel:        strings.TrimPrefix(strings.TrimSpace(os.Getenv("CHANNEL")), "@"),
-		HTTPAddr:       strings.TrimSpace(os.Getenv("HTTP_ADDR")),
 		KeepAliveFails: 3,
 	}
 	if cfg.PGPort == "" {
 		cfg.PGPort = "5432"
 	}
-	if cfg.HTTPAddr == "" {
-		if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
-			cfg.HTTPAddr = ":" + port
-		} else {
-			cfg.HTTPAddr = ":3000"
-		}
-	}
+	cfg.HTTPAddr = ListenAddr(os.Getenv("HTTP_ADDR"), os.Getenv("PORT"))
 	var err error
 	cfg.PollInterval, err = durationEnv("POLL_INTERVAL", 2*time.Minute)
 	if err != nil {
@@ -102,6 +95,20 @@ func (c Config) DSN() string {
 	q.Set("sslmode", sslMode(c.PGHost))
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+func ListenAddr(httpAddr, port string) string {
+	if p := strings.TrimSpace(port); p != "" {
+		return "0.0.0.0:" + p
+	}
+	addr := strings.TrimSpace(httpAddr)
+	if addr == "" {
+		return "0.0.0.0:3000"
+	}
+	if strings.HasPrefix(addr, ":") {
+		return "0.0.0.0" + addr
+	}
+	return addr
 }
 
 func sslMode(host string) string {

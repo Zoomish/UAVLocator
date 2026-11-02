@@ -57,6 +57,21 @@ func main() {
 }
 
 func run(sigCtx context.Context, cfg config.Config, log *slog.Logger) error {
+	ctx, cancelWork := context.WithCancel(sigCtx)
+	defer cancelWork()
+	ln, err := ops.Listen(cfg.HTTPAddr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+	log.Info("http listen", "addr", ln.Addr().String())
+	serveCtx := ctx
+	go func() {
+		if err := ops.Serve(serveCtx, ln); err != nil && !errors.Is(err, context.Canceled) {
+			log.Error("http server", "err", err)
+			cancelWork()
+		}
+	}()
 	pool, err := repository.Connect(sigCtx, cfg.DSN())
 	if err != nil {
 		return err
@@ -73,8 +88,6 @@ func run(sigCtx context.Context, cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 	defer owner.Release()
-	ctx, cancelWork := context.WithCancel(context.Background())
-	defer cancelWork()
 
 	users := repository.NewUsers(pool)
 	outbox := notify.NewQueue(users, log)
@@ -192,7 +205,6 @@ func run(sigCtx context.Context, cfg config.Config, log *slog.Logger) error {
 		tg.Start(ctx)
 		return ctx.Err()
 	})
-	g.Go(func() error { return ops.Serve(ctx, cfg.HTTPAddr, log) })
 	g.Go(func() error { return keep.Run(ctx) })
 	g.Go(func() error { return poller.Run(ctx) })
 	g.Go(func() error { return outbox.Run(ctx) })
