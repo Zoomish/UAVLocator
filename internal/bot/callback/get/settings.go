@@ -15,9 +15,12 @@ type Settings struct {
 }
 
 func (h *Settings) Handle(ctx context.Context, q cb.Query) error {
-	h.Screen.Toast(q.ID, "Перейти в настройки")
-	if err := h.Settings.Edit(ctx, q.ChatID, q.MessageID); err != nil {
+	public, err := h.Settings.Show(ctx, q)
+	if err != nil {
 		return fmt.Errorf("get settings: %w", err)
+	}
+	if !q.Group || public {
+		h.Screen.Toast(ctx, q.ID, "Перейти в настройки")
 	}
 	return nil
 }

@@ -78,7 +78,10 @@ func (r *Reader) Unread(ctx context.Context) (Batch, error) {
 		}
 		item := Item{ID: id}
 		if msg, ok := raw.(*tg.Message); ok {
-			plain, rendered := r.render(ctx, input, msg)
+			plain, rendered, err := r.render(ctx, input, msg)
+			if err != nil {
+				return Batch{}, err
+			}
 			item.Plain = plain
 			item.HTML = rendered
 		}
@@ -121,7 +124,7 @@ func (r *Reader) resolve(ctx context.Context) (*tg.Channel, error) {
 	return nil, fmt.Errorf("channel %s was not resolved", r.Channel)
 }
 
-func (r *Reader) render(ctx context.Context, channel tg.InputChannelClass, msg *tg.Message) (string, string) {
+func (r *Reader) render(ctx context.Context, channel tg.InputChannelClass, msg *tg.Message) (string, string, error) {
 	body := strip(msg.Message)
 	reply := ""
 	hdr, ok := msg.GetReplyTo()
@@ -129,21 +132,22 @@ func (r *Reader) render(ctx context.Context, channel tg.InputChannelClass, msg *
 		if replyHdr, ok := hdr.(*tg.MessageReplyHeader); ok {
 			if replyID, ok := replyHdr.GetReplyToMsgID(); ok && replyID != 0 {
 				text, err := r.replyText(ctx, channel, replyID)
-				if err == nil {
-					reply = text
+				if err != nil {
+					return "", "", fmt.Errorf("reply %d: %w", replyID, err)
 				}
+				reply = text
 			}
 		}
 	}
 	plain := strings.TrimSpace(strings.TrimSpace(body) + " " + strings.TrimSpace(reply))
 	if plain == "" {
-		return "", ""
+		return "", "", nil
 	}
 	rendered := html.EscapeString(body)
 	if reply != "" {
 		rendered = "<blockquote expandable>" + html.EscapeString(reply) + "</blockquote>" + rendered
 	}
-	return plain, rendered
+	return plain, rendered, nil
 }
 
 func (r *Reader) replyText(ctx context.Context, channel tg.InputChannelClass, id int) (string, error) {

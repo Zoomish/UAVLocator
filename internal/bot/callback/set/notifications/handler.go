@@ -17,16 +17,26 @@ type Handler struct {
 }
 
 func (h *Handler) Handle(ctx context.Context, q cb.Query, on bool) error {
+	if q.Group {
+		ok, err := h.Screen.IsChatAdmin(ctx, q.ChatID, q.Actor)
+		if err != nil || !ok {
+			h.Screen.Toast(ctx, q.ID, "Недостаточно прав")
+			return nil
+		}
+	}
 	verb := "выключаете"
 	if on {
 		verb = "включаете"
 	}
-	h.Screen.Toast(q.ID, "Вы "+verb+" уведомления")
 	if err := h.Users.SetNotifications(ctx, q.ChatID, on); err != nil {
 		return fmt.Errorf("set notifications: %w", err)
 	}
-	if err := h.Settings.Edit(ctx, q.ChatID, q.MessageID); err != nil {
+	public, err := h.Settings.Show(ctx, q)
+	if err != nil {
 		return fmt.Errorf("refresh settings: %w", err)
+	}
+	if !q.Group || public {
+		h.Screen.Toast(ctx, q.ID, "Вы "+verb+" уведомления")
 	}
 	return nil
 }

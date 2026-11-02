@@ -30,6 +30,8 @@ func Serve(ctx context.Context, addr string, log *slog.Logger) error {
 		}
 		return ctx.Err()
 	case err := <-errCh:
-		return fmt.Errorf("http server: %w", err)
+		log.Error("http server", "err", err)
+		<-ctx.Done()
+		return ctx.Err()
 	}
 }

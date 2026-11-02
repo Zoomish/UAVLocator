@@ -12,6 +12,7 @@ var (
 
 func Normalize(text string) string {
 	text = strings.ToLower(text)
+	text = strings.ReplaceAll(text, "ё", "е")
 	text = nonWord.ReplaceAllString(text, " ")
 	text = spaces.ReplaceAllString(text, " ")
 	return strings.TrimSpace(text)

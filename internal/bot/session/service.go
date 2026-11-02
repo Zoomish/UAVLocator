@@ -11,7 +11,8 @@ type Repo interface {
 	Ensure(ctx context.Context, tgID int64) error
 	SetFunctional(ctx context.Context, tgID int64, msgID int) error
 	SetError(ctx context.Context, tgID int64, msgID int) error
-	SetWaiting(ctx context.Context, tgID int64, waiting string, msgID int) error
+	SetWaiting(ctx context.Context, tgID int64, waiting string, msgID int, actor int64, name string) error
+	SetDraft(ctx context.Context, tgID int64, draft string, msgID int) error
 	ClearWaiting(ctx context.Context, tgID int64) error
 }
 
@@ -35,8 +36,12 @@ func (s *Service) SetError(ctx context.Context, tgID int64, msgID int) error {
 	return s.Repo.SetError(ctx, tgID, msgID)
 }
 
-func (s *Service) SetWaiting(ctx context.Context, tgID int64, waiting string, msgID int) error {
-	return s.Repo.SetWaiting(ctx, tgID, waiting, msgID)
+func (s *Service) SetWaiting(ctx context.Context, tgID int64, waiting string, msgID int, actor int64, name string) error {
+	return s.Repo.SetWaiting(ctx, tgID, waiting, msgID, actor, name)
+}
+
+func (s *Service) SetDraft(ctx context.Context, tgID int64, draft string, msgID int) error {
+	return s.Repo.SetDraft(ctx, tgID, draft, msgID)
 }
 
 func (s *Service) ClearWaiting(ctx context.Context, tgID int64) error {

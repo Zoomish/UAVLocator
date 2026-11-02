@@ -21,13 +21,13 @@ func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 
 func Probe(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, `
-		SELECT "tgId", admin, notifications, name, username, locations, "createdAt", "updatedAt"
+		SELECT "tgId", admin, notifications, blocked, name, username, locations, "locationsEditorId", "locationsEditor", webhook_url, "createdAt", "updatedAt"
 		FROM "user" WHERE false`)
 	if err != nil {
 		return fmt.Errorf("user table is missing columns from the current bot schema: %w", err)
 	}
 	_, err = pool.Exec(ctx, `
-		SELECT id, msg_id, "waitingFor", msg_id_delete, "tgId"
+		SELECT id, msg_id, "waitingFor", "waitingUser", "waitingName", draft, "draftMsg", msg_id_delete, "tgId"
 		FROM bot WHERE false`)
 	if err != nil {
 		return fmt.Errorf("bot table is missing columns from the current bot schema: %w", err)

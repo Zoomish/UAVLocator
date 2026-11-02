@@ -7,16 +7,18 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gotd/td/tgerr"
+
 	"locatorbpla/internal/domain"
 	"locatorbpla/internal/notify"
 )
 
 type Subscribers interface {
-	FindNotifiable(ctx context.Context, normalized string) ([]domain.User, error)
+	FindNotifiable(ctx context.Context, normalized string) ([]domain.Match, error)
 }
 
-type Sender interface {
-	Broadcast(ctx context.Context, html string, users []domain.User) error
+type Enqueuer interface {
+	Enqueue(ctx context.Context, html string, matches []domain.Match) error
 }
 
 type Poller struct {
@@ -27,9 +29,10 @@ type Poller struct {
 	Every   time.Duration
 	Limit   int
 	Subs    Subscribers
-	Send    Sender
+	Queue   Enqueuer
 	Log     *slog.Logger
 	Alert   func(error)
+	queued  map[int]struct{}
 }
 
 func (p *Poller) Run(ctx context.Context) error {
@@ -122,22 +125,34 @@ func (p *Poller) once(ctx context.Context, reader *Reader) error {
 	if err != nil {
 		return err
 	}
+	if p.queued == nil {
+		p.queued = map[int]struct{}{}
+	}
 	cursor := 0
 	for _, item := range batch.Items {
 		if item.HTML != "" {
-			users, err := p.Subs.FindNotifiable(ctx, domain.Normalize(item.Plain))
-			if err != nil {
-				_ = reader.MarkRead(ctx, batch.Channel, cursor)
-				return fmt.Errorf("match locations: %w", err)
-			}
-			if err := p.Send.Broadcast(ctx, item.HTML, users); err != nil {
-				_ = reader.MarkRead(ctx, batch.Channel, cursor)
-				return err
+			if _, seen := p.queued[item.ID]; !seen {
+				matches, err := p.Subs.FindNotifiable(ctx, domain.Normalize(item.Plain))
+				if err != nil {
+					_ = reader.MarkRead(ctx, batch.Channel, cursor)
+					return fmt.Errorf("match locations: %w", err)
+				}
+				if len(matches) > 0 {
+					if err := p.Queue.Enqueue(ctx, item.HTML, matches); err != nil {
+						_ = reader.MarkRead(ctx, batch.Channel, cursor)
+						return fmt.Errorf("enqueue delivery: %w", err)
+					}
+					p.queued[item.ID] = struct{}{}
+				}
 			}
 		}
 		cursor = item.ID
+		if err := reader.MarkRead(ctx, batch.Channel, cursor); err != nil {
+			return err
+		}
+		delete(p.queued, item.ID)
 	}
-	return reader.MarkRead(ctx, batch.Channel, cursor)
+	return nil
 }
 
 func isFlood(err error) bool {
@@ -146,15 +161,21 @@ func isFlood(err error) bool {
 }
 
 func floodWait(err error) (time.Duration, bool) {
+	if wait, ok := tgerr.AsFloodWait(err); ok && wait > 0 {
+		return capWait(wait), true
+	}
 	var retry *notify.RetryAfterError
 	if errors.As(err, &retry) && retry != nil && retry.Wait > 0 {
-		wait := retry.Wait
-		if wait > 5*time.Minute {
-			wait = 5 * time.Minute
-		}
-		return wait, true
+		return capWait(retry.Wait), true
 	}
 	return 0, false
+}
+
+func capWait(wait time.Duration) time.Duration {
+	if wait > 5*time.Minute {
+		return 5 * time.Minute
+	}
+	return wait
 }
 
 func (p *Poller) fail(err error) {

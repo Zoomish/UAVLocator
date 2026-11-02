@@ -13,8 +13,13 @@ import (
 	"locatorbpla/internal/repository"
 )
 
+type PostStats interface {
+	Latest() domain.PostStats
+}
+
 type Handler struct {
 	Users  *repository.Users
+	Posts  PostStats
 	Screen *screen.Screen
 }
 
@@ -22,15 +27,17 @@ func (h *Handler) Open(ctx context.Context, q cb.Query) error {
 	if _, err := h.require(ctx, q); err != nil {
 		return err
 	}
-	h.Screen.Toast(q.ID, "Меню администратора")
-	return h.home(ctx, q)
+	if err := h.home(ctx, q); err != nil {
+		return err
+	}
+	h.Screen.Toast(ctx, q.ID, "Меню администратора")
+	return nil
 }
 
 func (h *Handler) UsersPage(ctx context.Context, q cb.Query, rest string) error {
 	if _, err := h.require(ctx, q); err != nil {
 		return err
 	}
-	h.Screen.Toast(q.ID, "Получить всех пользователей")
 	page := pageFrom(rest)
 	users, err := h.Users.List(ctx)
 	if err != nil {
@@ -40,6 +47,7 @@ func (h *Handler) UsersPage(ctx context.Context, q cb.Query, rest string) error 
 	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
 		return fmt.Errorf("admin users: %w", err)
 	}
+	h.Screen.Toast(ctx, q.ID, "Получить всех пользователей")
 	return nil
 }
 
@@ -49,18 +57,13 @@ func (h *Handler) Toggle(ctx context.Context, q cb.Query, rest string) error {
 	}
 	target, page, err := parseTarget(rest)
 	if err != nil {
-		h.Screen.Toast(q.ID, "Некорректный пользователь")
+		h.Screen.Toast(ctx, q.ID, "Некорректный пользователь")
 		return nil
 	}
 	user, err := h.Users.ToggleAdmin(ctx, target)
 	if err != nil {
 		return fmt.Errorf("toggle admin: %w", err)
 	}
-	verb := "убираете"
-	if user.Admin {
-		verb = "делаете"
-	}
-	h.Screen.Toast(q.ID, "Вы "+verb+" пользователя админом")
 	users, err := h.Users.List(ctx)
 	if err != nil {
 		return fmt.Errorf("list users: %w", err)
@@ -69,15 +72,21 @@ func (h *Handler) Toggle(ctx context.Context, q cb.Query, rest string) error {
 	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
 		return fmt.Errorf("admin refresh: %w", err)
 	}
+	verb := "убираете"
+	if user.Admin {
+		verb = "делаете"
+	}
+	h.Screen.Toast(ctx, q.ID, "Вы "+verb+" пользователя админом")
 	return nil
 }
 
 func (h *Handler) home(ctx context.Context, q cb.Query) error {
-	users, err := h.Users.List(ctx)
+	audience, err := h.Users.Audience(ctx)
 	if err != nil {
-		return fmt.Errorf("count users: %w", err)
+		return fmt.Errorf("audience: %w", err)
 	}
-	text, kb := view.AdminHome(len(users))
+	post := h.Posts.Latest()
+	text, kb := view.AdminHome(audience, post)
 	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
 		return fmt.Errorf("admin home: %w", err)
 	}
@@ -85,12 +94,16 @@ func (h *Handler) home(ctx context.Context, q cb.Query) error {
 }
 
 func (h *Handler) require(ctx context.Context, q cb.Query) (domain.User, error) {
+	if q.Group {
+		h.Screen.Toast(ctx, q.ID, "Недоступно")
+		return domain.User{}, errDenied
+	}
 	user, err := h.Users.Find(ctx, q.ChatID)
 	if err != nil {
 		return domain.User{}, fmt.Errorf("admin user: %w", err)
 	}
 	if !user.Admin {
-		h.Screen.Toast(q.ID, "Недоступно")
+		h.Screen.Toast(ctx, q.ID, "Недоступно")
 		return domain.User{}, errDenied
 	}
 	return user, nil
