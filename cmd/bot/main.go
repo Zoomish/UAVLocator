@@ -186,26 +186,17 @@ func run(sigCtx context.Context, cfg config.Config, log *slog.Logger) error {
 		}),
 		Channel: cfg.Channel,
 		Every:   cfg.PollInterval,
-		Limit:   cfg.KeepAliveFails,
+		Limit:   cfg.PollFailAlert,
 		Subs:    users,
 		Queue:   outbox,
 		Log:     log,
 		Alert:   alertFn,
 	}
-	keep := &ops.KeepAlive{
-		Repo:  repository.NewKeepAlive(pool),
-		Every: cfg.KeepAliveEvery,
-		Limit: cfg.KeepAliveFails,
-		Log:   log,
-		Alert: alertFn,
-	}
-
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		tg.Start(ctx)
 		return ctx.Err()
 	})
-	g.Go(func() error { return keep.Run(ctx) })
 	g.Go(func() error { return poller.Run(ctx) })
 	g.Go(func() error { return outbox.Run(ctx) })
 	g.Go(func() error { return hooks.Run(ctx) })

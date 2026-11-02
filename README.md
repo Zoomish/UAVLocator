@@ -70,10 +70,7 @@ make migrate
 | `PORT` | Render подставляет сам. Бот слушает его, если `HTTP_ADDR` пуст |
 | `HTTP_ADDR` | `:3000`, когда нет и `PORT` |
 | `POLL_INTERVAL` | `2m` |
-| `KEEPALIVE_INTERVAL` | `3m` |
-| `KEEPALIVE_FAIL_ALERT` | `3` |
-
-`KEEPALIVE_INTERVAL` — реальные запись, обновление и удаление в `db_keep_alive`, чтобы Aiven не засыпал.
+| `POLL_FAIL_ALERT` | `3` |
 
 ## Сессия читателя
 

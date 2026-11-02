@@ -25,24 +25,23 @@ type Config struct {
 	TGSession       string
 	Channel         string
 	PollInterval    time.Duration
-	KeepAliveEvery  time.Duration
-	KeepAliveFails  int
+	PollFailAlert   int
 	HTTPAddr        string
 }
 
 func Load() (Config, error) {
 	_ = godotenv.Load()
 	cfg := Config{
-		TelegramToken:  strings.TrimSpace(os.Getenv("TELEGRAM_TOKEN")),
-		PGHost:         strings.TrimSpace(os.Getenv("POSTGRES_HOST")),
-		PGPort:         strings.TrimSpace(os.Getenv("POSTGRES_PORT")),
-		PGUser:         strings.TrimSpace(os.Getenv("POSTGRES_USER")),
-		PGPassword:     os.Getenv("POSTGRES_PASSWORD"),
-		PGDatabase:     strings.TrimSpace(os.Getenv("POSTGRES_DATABASE")),
-		APIHash:        strings.TrimSpace(os.Getenv("API_HASH")),
-		TGSession:      strings.TrimSpace(os.Getenv("TG_SESSION")),
-		Channel:        strings.TrimPrefix(strings.TrimSpace(os.Getenv("CHANNEL")), "@"),
-		KeepAliveFails: 3,
+		TelegramToken: strings.TrimSpace(os.Getenv("TELEGRAM_TOKEN")),
+		PGHost:        strings.TrimSpace(os.Getenv("POSTGRES_HOST")),
+		PGPort:        strings.TrimSpace(os.Getenv("POSTGRES_PORT")),
+		PGUser:        strings.TrimSpace(os.Getenv("POSTGRES_USER")),
+		PGPassword:    os.Getenv("POSTGRES_PASSWORD"),
+		PGDatabase:    strings.TrimSpace(os.Getenv("POSTGRES_DATABASE")),
+		APIHash:       strings.TrimSpace(os.Getenv("API_HASH")),
+		TGSession:     strings.TrimSpace(os.Getenv("TG_SESSION")),
+		Channel:       strings.TrimPrefix(strings.TrimSpace(os.Getenv("CHANNEL")), "@"),
+		PollFailAlert: 3,
 	}
 	if cfg.PGPort == "" {
 		cfg.PGPort = "5432"
@@ -50,10 +49,6 @@ func Load() (Config, error) {
 	cfg.HTTPAddr = ListenAddr(os.Getenv("HTTP_ADDR"), os.Getenv("PORT"))
 	var err error
 	cfg.PollInterval, err = durationEnv("POLL_INTERVAL", 2*time.Minute)
-	if err != nil {
-		return Config{}, err
-	}
-	cfg.KeepAliveEvery, err = durationEnv("KEEPALIVE_INTERVAL", 3*time.Minute)
 	if err != nil {
 		return Config{}, err
 	}
@@ -69,10 +64,10 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("API_ID: %w", err)
 		}
 	}
-	if v := strings.TrimSpace(os.Getenv("KEEPALIVE_FAIL_ALERT")); v != "" {
-		cfg.KeepAliveFails, err = strconv.Atoi(v)
+	if v := strings.TrimSpace(os.Getenv("POLL_FAIL_ALERT")); v != "" {
+		cfg.PollFailAlert, err = strconv.Atoi(v)
 		if err != nil {
-			return Config{}, fmt.Errorf("KEEPALIVE_FAIL_ALERT: %w", err)
+			return Config{}, fmt.Errorf("POLL_FAIL_ALERT: %w", err)
 		}
 	}
 	if cfg.TelegramToken == "" {
