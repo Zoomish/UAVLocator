@@ -40,15 +40,29 @@ func (h *Handler) Handle(ctx context.Context, q cb.Query) error {
 	text, kb := view.LocationsPrompt()
 	if q.Group {
 		hidden := view.HiddenIntro(q.Name, true) + text
-		_, _, err := h.Screen.Whisper(ctx, q.ChatID, screen.Talk{
+		id, public, err := h.Screen.Whisper(ctx, q.ChatID, screen.Talk{
 			Actor: q.Actor, CallbackID: q.ID, EphemeralID: q.EphemeralID, Replace: q.EphemeralID == 0,
 		}, hidden, &kb)
-		if err != nil {
-			if _, plainErr := h.Screen.SendPlain(ctx, q.ChatID, text, &kb); plainErr != nil {
+		if err != nil || public {
+			if public && id != 0 && id != q.MessageID {
+				h.Screen.Delete(ctx, q.ChatID, id)
+			}
+			plainID, plainErr := h.Screen.SendPlain(ctx, q.ChatID, text, &kb)
+			if plainErr != nil {
 				_ = h.Sessions.ClearWaiting(ctx, q.ChatID)
+				if err == nil {
+					err = plainErr
+				}
+				return fmt.Errorf("locations prompt: %w", err)
+			}
+			if err := h.Sessions.SetDraft(ctx, q.ChatID, "", plainID); err != nil {
 				return fmt.Errorf("locations prompt: %w", err)
 			}
 			h.Screen.Toast(ctx, q.ID, "Перечислите локации")
+			return nil
+		}
+		if err := h.Sessions.SetDraft(ctx, q.ChatID, "", screen.PromptMark(id, public)); err != nil {
+			return fmt.Errorf("locations prompt: %w", err)
 		}
 		return nil
 	}

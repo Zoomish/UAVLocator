@@ -16,7 +16,11 @@ const donateURL = "https://pay.cloudtips.ru/p/8d8b98bb"
 
 const pageSize = 5
 
-func Welcome() (string, models.InlineKeyboardMarkup) {
+func Welcome(alertsOn bool) (string, models.InlineKeyboardMarkup) {
+	off := ""
+	if !alertsOn {
+		off = "\n\n⚠️ <b>Тревоги сейчас выключены.</b> Включите их кнопкой в настройках."
+	}
 	text := `Добро пожаловать в <b>Локатор России</b>! 🛡️
 
 ` + `Это ваш персональный помощник для отслеживания угрозы БПЛА в режиме реального времени.
@@ -35,7 +39,7 @@ func Welcome() (string, models.InlineKeyboardMarkup) {
 ` + `• <code>/settings</code> — открыть настройки
 
 ` + `<b>Основная кнопка:</b>
-` + `⚙️ <b>Настройки</b> — выбрать локации и управлять уведомлениями.`
+` + `⚙️ <b>Настройки</b> — выбрать локации и управлять уведомлениями.` + off
 	kb := markup(row(dataBtn("⚙️ Настройки", "get-settings")))
 	return text, kb
 }
@@ -49,12 +53,16 @@ func GroupBoard(user domain.User) (string, models.InlineKeyboardMarkup) {
 	if label := editorLabel(user); label != "" {
 		editor = label
 	}
+	alarm := "Тревога приходит одним сообщением в чат."
+	if !user.Notifications {
+		alarm = "Тревоги сейчас выключены. Включите их кнопкой в настройках."
+	}
 	text := fmt.Sprintf(`<b>Локатор в этом чате</b>
 
 Локации: %s
 Менял: %s
 
-Тревога приходит одним сообщением в чат. Настройки видит только тот, кто нажал кнопку.`, locs, editor)
+%s Настройки видит только тот, кто нажал кнопку.`, locs, editor, alarm)
 	kb := markup(row(dataBtn("⚙️ Настройки", "get-settings")))
 	return text, kb
 }
@@ -92,6 +100,10 @@ func Settings(user domain.User, private bool) (string, models.InlineKeyboardMark
 		toggleData = "set-notifications-false"
 		toggleHint = "отключить"
 	}
+	apiLine := ""
+	if private {
+		apiLine = "🔗 <b>API</b> — адрес, куда после тревоги уходит текст сообщения\n"
+	}
 	text := fmt.Sprintf(`⚙️ <b>Настройки</b>
 
 Здесь вы можете настроить параметры получения уведомлений о БПЛА.
@@ -108,17 +120,17 @@ func Settings(user domain.User, private bool) (string, models.InlineKeyboardMark
 <b>Кнопки настроек:</b>
 📍 <b>Локации</b> — изменить список отслеживаемых регионов
 %s <b>Уведомления</b> — %s оповещения о новых угрозах
-❤️ <b>Поддержать проект</b> — поддержать проект чаевыми по ссылке
-`, locs, editorLine, notifMark, notifState, notifMark, toggleHint)
+%s❤️ <b>Поддержать проект</b> — поддержать проект чаевыми по ссылке
+`, locs, editorLine, notifMark, notifState, notifMark, toggleHint, apiLine)
 
 	rows := [][]models.InlineKeyboardButton{
 		row(dataBtn("📍 Локации", "set-locations")),
 		row(dataBtn(toggleText, toggleData)),
-		row(urlBtn("❤️ Поддержать проект", donateURL)),
 	}
 	if private {
-		rows = append(rows, row(dataBtn("API", "get-api")))
+		rows = append(rows, row(dataBtn("🔗 API", "get-api")))
 	}
+	rows = append(rows, row(urlBtn("❤️ Поддержать проект", donateURL)))
 	if private && user.Admin {
 		rows = append(rows, row(dataBtn("🛠️ Админка", "get-admin")))
 	}
@@ -152,24 +164,46 @@ func LocationsPrompt() (string, models.InlineKeyboardMarkup) {
 
 func APIMenu(user domain.User) (string, models.InlineKeyboardMarkup) {
 	state := "не задан"
+	setLabel := "✏️ Задать"
+	buttons := `<b>Кнопки:</b>
+✏️ <b>Задать</b> — прислать адрес https
+⬅️ <b>Назад</b> — вернуться в настройки`
+	rows := [][]models.InlineKeyboardButton{
+		row(dataBtn(setLabel, "set-api")),
+	}
 	if user.WebhookURL != "" {
 		state = html.EscapeString(endpoint(user.WebhookURL))
+		setLabel = "✏️ Изменить"
+		buttons = `<b>Кнопки:</b>
+✏️ <b>Изменить</b> — прислать другой адрес
+🚫 <b>Отключить</b> — стереть адрес
+⬅️ <b>Назад</b> — вернуться в настройки`
+		rows = [][]models.InlineKeyboardButton{
+			row(dataBtn(setLabel, "set-api")),
+			row(dataBtn("🚫 Отключить", "set-api-off")),
+		}
 	}
-	text := fmt.Sprintf(`<b>API</b>
+	rows = append(rows, row(dataBtn("⬅️ Назад", "get-settings")))
+	text := fmt.Sprintf(`🔗 <b>API</b>
 
-Сейчас: <code>%s</code>
+После тревоги бот отправляет текст сообщения на ваш адрес.
 
-После тревоги бот отправляет POST на этот адрес и не читает ответ.`, state)
-	kb := markup(
-		row(dataBtn("Изменить", "set-api")),
-		row(dataBtn("Отключить", "set-api-off")),
-	)
-	return text, kb
+<b>Запрос:</b>
+• Метод: <code>POST</code>
+• Заголовок: <code>Content-Type: application/json</code>
+• Тело: <code>{"text":"текст тревоги"}</code>
+Бот не читает ответ и не повторяет запрос.
+
+<b>Сейчас:</b> <code>%s</code>
+
+%s`, state, buttons)
+	return text, markup(rows...)
 }
 
 func APIPrompt(group bool) (string, models.InlineKeyboardMarkup) {
-	text := `Пришлите один адрес <code>https://</code>. После тревоги бот отправит туда POST и не будет ждать ответ.
+	text := `🔗 <b>Адрес API</b>
 
+Пришлите один адрес <code>https://</code>.
 <code>-</code> стирает адрес.`
 	if group {
 		text = `Не пишите адрес в чат. Нажмите «Ответить» именно на это сообщение и пришлите один адрес https.
@@ -239,15 +273,15 @@ func ErrorThanks() (string, models.InlineKeyboardMarkup) {
 func AdminHome(audience domain.Audience, post domain.PostStats) (string, models.InlineKeyboardMarkup) {
 	text := fmt.Sprintf(`Панель администратора
 
+👥 <b>Всего</b>: %d
+🔔 <b>Получают тревоги</b>: %d
+
 📍 <b>Без локаций</b>: %d
 🔕 <b>Сами выключили уведомления</b>: %d
 🚫 <b>Заблокировали бота</b>: %d
 
-%s`, audience.NoLocations, audience.Muted, audience.Blocked, lastPost(post))
-	kb := markup(
-		row(dataBtn("Получить всех пользователей", "get-admin-users")),
-		row(dataBtn("⚙️ Настройки", "get-settings")),
-	)
+%s`, audience.People, audience.Active, audience.NoLocations, audience.Muted, audience.Blocked, lastPost(post))
+	kb := markup(row(dataBtn("⚙️ Настройки", "get-settings")))
 	return text, kb
 }
 

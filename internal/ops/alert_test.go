@@ -85,6 +85,24 @@ func TestDueHoldsRetry(t *testing.T) {
 	}
 }
 
+func TestRepeatIgnoresDialPort(t *testing.T) {
+	a := stripDial("read tcp 10.0.0.5:111->149.154.167.50:443: reset")
+	b := stripDial("read tcp 10.0.0.5:222->149.154.167.50:443: reset")
+	if a != b {
+		t.Fatalf("ports leaked: %q vs %q", a, b)
+	}
+	notes := map[string]*note{}
+	now := time.Now()
+	send, _ := repeat(notes, a, now, time.Minute)
+	if send {
+		t.Fatal("first blip stays in the log")
+	}
+	send, _ = repeat(notes, b, now.Add(time.Second), time.Minute)
+	if !send {
+		t.Fatal("second blip with a new port must notify")
+	}
+}
+
 func TestRepeatAfterSummary(t *testing.T) {
 	notes := map[string]*note{
 		"getUpdates: eof": {text: "getUpdates: eof", count: 4, fromRepeat: true, sent: time.Now().Add(-2 * time.Minute)},

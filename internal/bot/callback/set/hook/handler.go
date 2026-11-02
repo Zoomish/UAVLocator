@@ -61,6 +61,14 @@ func (h *Handler) Disable(ctx context.Context, q cb.Query) error {
 	if err != nil {
 		return fmt.Errorf("api user: %w", err)
 	}
+	if user.WebhookURL == "" {
+		text, kb := view.APIMenu(user)
+		if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
+			return fmt.Errorf("api menu: %w", err)
+		}
+		h.Screen.Toast(ctx, q.ID, "Адрес и так не задан")
+		return nil
+	}
 	if err := h.Users.SetWebhook(ctx, q.ChatID, ""); err != nil {
 		return fmt.Errorf("clear api: %w", err)
 	}

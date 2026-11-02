@@ -95,6 +95,9 @@ func privateIP(ip net.IP) bool {
 	if v4[0] == 100 && v4[1] == 100 && v4[2] == 100 && v4[3] == 200 {
 		return true
 	}
+	if v4[0] == 168 && v4[1] == 63 && v4[2] == 129 && v4[3] == 16 {
+		return true
+	}
 	return false
 }
 
@@ -109,7 +112,7 @@ func embeddedV4(ip net.IP) net.IP {
 	case ip[0] == 0x00 && ip[1] == 0x64 && ip[2] == 0xff && ip[3] == 0x9b && isZero(ip[4:12]):
 		return net.IPv4(ip[12], ip[13], ip[14], ip[15])
 	case ip[0] == 0x00 && ip[1] == 0x64 && ip[2] == 0xff && ip[3] == 0x9b && ip[4] == 0x00 && ip[5] == 0x01:
-		return net.IPv4(ip[12], ip[13], ip[14], ip[15])
+		return net.IPv4(ip[6], ip[7], ip[9], ip[10])
 	case ip[0] == 0x20 && ip[1] == 0x01 && ip[2] == 0 && ip[3] == 0:
 		return net.IPv4(ip[12]^0xff, ip[13]^0xff, ip[14]^0xff, ip[15]^0xff)
 	default:

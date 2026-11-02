@@ -18,6 +18,7 @@ func TestPublicHTTPS(t *testing.T) {
 		"https://8.8.8.8/hook",
 		"https://1.1.1.1/a?x=1",
 		"https://[2002:808:808::]/hook",
+		"https://[64:ff9b:1:808:0:808::]/hook",
 	}
 	bad := []string{
 		"",
@@ -35,6 +36,8 @@ func TestPublicHTTPS(t *testing.T) {
 		"https://[2002:7f00:1::]/",
 		"https://[64:ff9b::7f00:1]/",
 		"https://[64:ff9b:1::a00:1]/",
+		"https://[64:ff9b:1:7f00:0:1:808:808]/",
+		"https://168.63.129.16/",
 		"https://[2001:0:0:0:0:0:80ff:fffe]/",
 		"https://100.100.100.200/",
 		"https://[fd00:ec2::254]/",

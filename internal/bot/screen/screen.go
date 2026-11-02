@@ -143,11 +143,10 @@ func (s *Screen) Whisper(ctx context.Context, chatID int64, talk Talk, text stri
 	}
 	sent, err := s.Bot.SendMessage(ctx, params)
 	if err == nil {
-		id := sent.EphemeralMessageID
-		if id == 0 {
-			id = sent.ID
+		if sent.EphemeralMessageID != 0 {
+			return sent.EphemeralMessageID, false, nil
 		}
-		return id, false, nil
+		return sent.ID, true, nil
 	}
 	s.forbid(ctx, chatID, err)
 	if denied(err) || !talk.AllowPublic {
@@ -178,6 +177,27 @@ func (s *Screen) editEphemeral(ctx context.Context, chatID, actor int64, ephemer
 		return fmt.Errorf("edit ephemeral: %w", err)
 	}
 	return nil
+}
+
+func PromptMark(id int, public bool) int {
+	if id == 0 || public {
+		return id
+	}
+	return -id
+}
+
+func (s *Screen) DropDraft(ctx context.Context, chatID, actor int64, draftMsg, keep int) {
+	if draftMsg == 0 || s.Bot == nil {
+		return
+	}
+	if draftMsg < 0 {
+		s.DeleteEphemeral(ctx, chatID, actor, -draftMsg)
+		return
+	}
+	if keep != 0 && draftMsg == keep {
+		return
+	}
+	s.Delete(ctx, chatID, draftMsg)
 }
 
 func (s *Screen) DeleteEphemeral(ctx context.Context, chatID, actor int64, ephemeralID int) {

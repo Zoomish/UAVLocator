@@ -70,6 +70,9 @@ func (h *Handler) Handle(ctx context.Context, q cb.Query, rest string) error {
 		h.Screen.Toast(ctx, q.ID, "Вы отменили ввод")
 		return nil
 	case "locations", "webhook":
+		draftMsg := sess.DraftMsg
+		actor := sess.WaitingUser
+		keep := sess.MsgID
 		if err := h.Sessions.ClearWaiting(ctx, q.ChatID); err != nil {
 			return fmt.Errorf("cancel input: %w", err)
 		}
@@ -77,6 +80,9 @@ func (h *Handler) Handle(ctx context.Context, q cb.Query, rest string) error {
 			return fmt.Errorf("cancel input cleanup: %w", err)
 		}
 		public, err := h.Settings.Show(ctx, q)
+		if !(draftMsg < 0 && err == nil && !public) {
+			h.Screen.DropDraft(ctx, q.ChatID, actor, draftMsg, keep)
+		}
 		if err != nil {
 			return err
 		}
@@ -85,20 +91,18 @@ func (h *Handler) Handle(ctx context.Context, q cb.Query, rest string) error {
 		}
 		return nil
 	case "error":
+		draftMsg := sess.DraftMsg
+		actor := sess.WaitingUser
+		keep := sess.MsgID
 		if err := h.Sessions.ClearWaiting(ctx, q.ChatID); err != nil {
 			return fmt.Errorf("cancel error: %w", err)
 		}
 		if err := h.Screen.ClearNoise(ctx, q.ChatID, 0); err != nil {
 			return fmt.Errorf("cancel error cleanup: %w", err)
 		}
+		h.Screen.DropDraft(ctx, q.ChatID, actor, draftMsg, keep)
 		if q.Group && q.EphemeralID != 0 {
 			h.Screen.DeleteEphemeral(ctx, q.ChatID, q.Actor, q.EphemeralID)
-		}
-		if !q.Group {
-			h.Screen.Delete(ctx, q.ChatID, q.MessageID)
-			if err := h.Sessions.SetFunctional(ctx, q.ChatID, 0); err != nil {
-				return fmt.Errorf("clear cancelled message: %w", err)
-			}
 		}
 		h.Screen.Toast(ctx, q.ID, "Вы отменили отправку ошибки")
 		return nil

@@ -24,10 +24,14 @@ func (h *Handler) Command(ctx context.Context, chatID int64, name, username stri
 	if _, err := h.Users.ReleaseBlock(ctx, chatID); err != nil {
 		return fmt.Errorf("start release: %w", err)
 	}
+	user, err = h.Users.Find(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("start user: %w", err)
+	}
 	if err := h.Sessions.Ensure(ctx, chatID); err != nil {
 		return fmt.Errorf("start session: %w", err)
 	}
-	text, kb := view.Welcome()
+	text, kb := view.Welcome(user.Notifications)
 	if group {
 		text, kb = view.GroupBoard(user)
 	}

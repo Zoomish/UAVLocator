@@ -40,8 +40,15 @@ func (h *Handler) Command(ctx context.Context, chatID int64, userMsgID int, talk
 	if chatID < 0 && talk.Actor != 0 {
 		talk.AllowPublic = false
 		hidden := view.HiddenIntro(talk.Name, false) + text
-		if _, _, err := h.Screen.Whisper(ctx, chatID, talk, hidden, &kb); err != nil {
+		id, public, err := h.Screen.Whisper(ctx, chatID, talk, hidden, &kb)
+		if err != nil || public {
+			if public && id != 0 {
+				h.Screen.Delete(ctx, chatID, id)
+			}
 			if _, plainErr := h.Screen.SendPlain(ctx, chatID, text, &kb); plainErr != nil {
+				if err == nil {
+					err = plainErr
+				}
 				return fmt.Errorf("settings screen: %w", err)
 			}
 		}
@@ -67,11 +74,17 @@ func (h *Handler) Show(ctx context.Context, q cb.Query) (bool, error) {
 		}
 		text, kb := view.Settings(user, false)
 		hidden := view.HiddenIntro(q.Name, false) + text
-		_, _, err = h.Screen.Whisper(ctx, q.ChatID, screen.Talk{
+		id, public, err := h.Screen.Whisper(ctx, q.ChatID, screen.Talk{
 			Actor: q.Actor, CallbackID: q.ID, EphemeralID: q.EphemeralID, Replace: q.EphemeralID == 0,
 		}, hidden, &kb)
-		if err != nil {
+		if err != nil || public {
+			if public && id != 0 && id != q.MessageID {
+				h.Screen.Delete(ctx, q.ChatID, id)
+			}
 			if _, plainErr := h.Screen.SendPlain(ctx, q.ChatID, text, &kb); plainErr != nil {
+				if err == nil {
+					err = plainErr
+				}
 				return false, fmt.Errorf("settings whisper: %w", err)
 			}
 			return true, nil

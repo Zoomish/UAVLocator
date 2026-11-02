@@ -34,20 +34,11 @@ func (h *Handler) Open(ctx context.Context, q cb.Query) error {
 	return nil
 }
 
-func (h *Handler) UsersPage(ctx context.Context, q cb.Query, rest string) error {
+func (h *Handler) UsersPage(ctx context.Context, q cb.Query, _ string) error {
 	if _, err := h.require(ctx, q); err != nil {
 		return err
 	}
-	page := pageFrom(rest)
-	users, err := h.Users.List(ctx)
-	if err != nil {
-		return fmt.Errorf("list users: %w", err)
-	}
-	text, kb := view.AdminUsers(users, page)
-	if err := h.Screen.EditFunctional(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
-		return fmt.Errorf("admin users: %w", err)
-	}
-	h.Screen.Toast(ctx, q.ID, "Получить всех пользователей")
+	h.Screen.Toast(ctx, q.ID, "Списка больше нет")
 	return nil
 }
 
@@ -113,18 +104,6 @@ var errDenied = fmt.Errorf("not admin")
 
 func IsDenied(err error) bool {
 	return err == errDenied
-}
-
-func pageFrom(rest string) int {
-	if rest == "" {
-		return 0
-	}
-	head, _, _ := strings.Cut(rest, "-")
-	n, err := strconv.Atoi(head)
-	if err != nil || n < 0 {
-		return 0
-	}
-	return n
 }
 
 func parseTarget(rest string) (int64, int, error) {

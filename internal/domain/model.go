@@ -29,6 +29,8 @@ type Match struct {
 }
 
 type Audience struct {
+	People      int
+	Active      int
 	NoLocations int
 	Muted       int
 	Blocked     int

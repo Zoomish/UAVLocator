@@ -152,10 +152,12 @@ func (r *Users) Audience(ctx context.Context) (domain.Audience, error) {
 	var stats domain.Audience
 	err := r.pool.QueryRow(ctx, `
 		SELECT
+			count(*) FILTER (WHERE "tgId" > 0),
+			count(*) FILTER (WHERE "tgId" > 0 AND notifications = true AND blocked = false AND cardinality(COALESCE(locations, '{}')) > 0),
 			count(*) FILTER (WHERE cardinality(COALESCE(locations, '{}')) = 0),
 			count(*) FILTER (WHERE notifications = false AND blocked = false),
 			count(*) FILTER (WHERE blocked)
-		FROM "user"`).Scan(&stats.NoLocations, &stats.Muted, &stats.Blocked)
+		FROM "user"`).Scan(&stats.People, &stats.Active, &stats.NoLocations, &stats.Muted, &stats.Blocked)
 	if err != nil {
 		return domain.Audience{}, fmt.Errorf("audience: %w", err)
 	}

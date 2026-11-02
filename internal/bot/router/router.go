@@ -122,15 +122,15 @@ func (r *Router) onCallback(ctx context.Context, upd *models.Update) {
 		"callback", head,
 	)
 	actor, name := person(&q.From)
-	if group && sess.WaitingUser != 0 && actor != sess.WaitingUser && blocksWait(q.Data) {
+	if group && sess.WaitingFor != "" && sess.WaitingUser != 0 && actor != sess.WaitingUser {
 		r.Screen.Toast(ctx, q.ID, screen.Busy(sess.WaitingName, sess.WaitingUser))
 		return
 	}
-	if !group && sess.MsgID != 0 && messageID != 0 && messageID != sess.MsgID {
+	if !group && sess.MsgID != 0 && messageID != 0 && messageID != sess.MsgID && messageID != sess.DraftMsg {
 		r.Screen.Toast(ctx, q.ID, "Меню устарело")
 		return
 	}
-	if !group && sess.WaitingFor != "" && head != "cancel" && head != "confirm" {
+	if sess.WaitingFor != "" && head != "cancel" && head != "confirm" {
 		r.Screen.Toast(ctx, q.ID, "Сначала отправьте текст или нажмите Отмена")
 		return
 	}
@@ -165,7 +165,21 @@ func (r *Router) onMessage(ctx context.Context, upd *models.Update) {
 		"waiting_for", sess.WaitingFor,
 	)
 	if group && sess.WaitingFor != "" && sess.WaitingUser != 0 && actor != sess.WaitingUser {
-		if _, ok := commandName(msg); ok {
+		if name, ok := commandName(msg); ok {
+			if name == "start" {
+				released, relErr := r.Start.Users.ReleaseBlock(ctx, chatID)
+				if relErr != nil {
+					r.fail(ctx, chatID, "", relErr)
+					return
+				}
+				if released {
+					if err := r.Input.Rollback(ctx, chatID); err != nil {
+						r.fail(ctx, chatID, "", err)
+					}
+					r.Screen.Delete(ctx, chatID, msg.ID)
+					return
+				}
+			}
 			text := screen.Busy(sess.WaitingName, sess.WaitingUser)
 			_, _, err := r.Screen.Whisper(ctx, chatID, screen.Talk{Actor: actor, ReplyEphemeral: msg.EphemeralMessageID}, text, nil)
 			if err != nil {
@@ -273,6 +287,17 @@ func (r *Router) onCommand(ctx context.Context, msg *models.Message, name string
 }
 
 func (r *Router) fail(ctx context.Context, chatID int64, callbackID string, err error) {
+	var ue *input.UserError
+	if errors.As(err, &ue) {
+		if callbackID != "" {
+			r.Screen.Toast(ctx, callbackID, ue.Text)
+			return
+		}
+		if sendErr := r.Screen.SendUserError(ctx, chatID, ue.Text); sendErr != nil {
+			r.Log.Error("handler", "err", sendErr, "telegram_id", chatID)
+		}
+		return
+	}
 	r.Log.Error("handler", "err", err, "telegram_id", chatID)
 	if r.Alert != nil {
 		r.Alert.Infra(ctx, err)
@@ -323,15 +348,6 @@ func callbackTarget(q *models.CallbackQuery) (int64, int, int, bool) {
 		return msg.Chat.ID, msg.MessageID, 0, true
 	default:
 		return 0, 0, 0, false
-	}
-}
-
-func blocksWait(data string) bool {
-	switch data {
-	case "set-locations", "get-api", "set-api", "set-api-off", "cancel-locations", "cancel-api", "cancel-webhook", "cancel-error", "confirm-save", "confirm-again":
-		return true
-	default:
-		return false
 	}
 }
 

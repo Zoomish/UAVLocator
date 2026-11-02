@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
+	"regexp"
 	"sync"
 	"time"
 
 	"github.com/go-telegram/bot"
 )
+
+var dialHop = regexp.MustCompile(`(?:\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:]*\]):[0-9]+->(?:\d{1,3}(?:\.\d{1,3}){3}|\[[0-9a-fA-F:]*\]):[0-9]+`)
 
 type note struct {
 	text       string
@@ -44,7 +46,7 @@ func (a *Alerter) Repeat(ctx context.Context, err error) {
 		return
 	}
 	a.ready()
-	text := clip(err.Error(), 3500)
+	text := clip(stripDial(err.Error()), 3500)
 	a.mu.Lock()
 	send, summary := repeat(a.notes, text, time.Now(), a.every())
 	a.mu.Unlock()
@@ -177,7 +179,7 @@ func (a *Alerter) send(text string) bool {
 	if a.Log != nil {
 		a.Log.Error("admin notify failed", "err", err)
 	}
-	return !retryLater(err)
+	return false
 }
 
 func stage(notes map[string]*note, text string, now time.Time, every time.Duration) (bool, string) {
@@ -254,9 +256,8 @@ func ack(notes map[string]*note, text string, now time.Time) {
 	n.sent = now
 }
 
-func retryLater(err error) bool {
-	s := strings.ToLower(err.Error())
-	return strings.Contains(s, "429") || strings.Contains(s, "retry after") || strings.Contains(s, "too many requests")
+func stripDial(s string) string {
+	return dialHop.ReplaceAllString(s, "dial")
 }
 
 func clip(s string, n int) string {

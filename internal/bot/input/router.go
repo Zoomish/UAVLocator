@@ -50,6 +50,12 @@ type Router struct {
 
 func (r *Router) Handle(ctx context.Context, in Incoming) error {
 	switch in.Waiting {
+	case domain.WaitLocations, domain.WaitError:
+		if r.hiddenNoise(ctx, in) {
+			return nil
+		}
+	}
+	switch in.Waiting {
 	case domain.WaitLocations:
 		return r.locations(ctx, in)
 	case domain.WaitError:
@@ -59,6 +65,17 @@ func (r *Router) Handle(ctx context.Context, in Incoming) error {
 	default:
 		return fmt.Errorf("unknown waiting %q", in.Waiting)
 	}
+}
+
+func (r *Router) hiddenNoise(ctx context.Context, in Incoming) bool {
+	if in.ChatID >= 0 || in.Ephemeral != 0 {
+		return false
+	}
+	sess, err := r.Sessions.Load(ctx, in.ChatID)
+	if err != nil {
+		return false
+	}
+	return sess.DraftMsg < 0
 }
 
 func (r *Router) locations(ctx context.Context, in Incoming) error {
@@ -195,13 +212,27 @@ func (r *Router) preview(ctx context.Context, in Incoming, phrase, text string, 
 	if err != nil {
 		return fmt.Errorf("load session: %w", err)
 	}
-	if in.ChatID < 0 && in.Ephemeral != 0 {
+	if in.ChatID < 0 && sess.DraftMsg < 0 {
+		if in.Ephemeral == 0 {
+			return nil
+		}
 		body := view.HiddenIntro(in.Editor, false) + text
-		id, _, err := r.Screen.Whisper(ctx, in.ChatID, screen.Talk{Actor: in.Actor, ReplyEphemeral: in.Ephemeral}, body, &kb)
+		id, public, err := r.Screen.Whisper(ctx, in.ChatID, screen.Talk{Actor: in.Actor, ReplyEphemeral: in.Ephemeral}, body, &kb)
 		if err != nil {
 			return fmt.Errorf("confirm screen: %w", err)
 		}
-		if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, id); err != nil {
+		if public {
+			r.Screen.Delete(ctx, in.ChatID, id)
+			id, err = r.Screen.SendPlain(ctx, in.ChatID, text, &kb)
+			if err != nil {
+				return fmt.Errorf("confirm screen: %w", err)
+			}
+		}
+		mark := screen.PromptMark(id, public)
+		if mark != sess.DraftMsg {
+			r.Screen.DropDraft(ctx, in.ChatID, in.Actor, sess.DraftMsg, sess.MsgID)
+		}
+		if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, mark); err != nil {
 			return err
 		}
 		r.Screen.DeleteEphemeral(ctx, in.ChatID, in.Actor, in.Ephemeral)
@@ -209,7 +240,7 @@ func (r *Router) preview(ctx context.Context, in Incoming, phrase, text string, 
 	}
 	if in.ChatID < 0 {
 		msgID := sess.DraftMsg
-		if msgID != 0 {
+		if msgID > 0 {
 			if err := r.Screen.EditPlain(ctx, in.ChatID, msgID, text, kb); err == nil {
 				if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, 0); err != nil {
 					return err
@@ -222,11 +253,31 @@ func (r *Router) preview(ctx context.Context, in Incoming, phrase, text string, 
 		if err != nil {
 			return fmt.Errorf("confirm screen: %w", err)
 		}
+		if id != sess.DraftMsg {
+			r.Screen.DropDraft(ctx, in.ChatID, in.Actor, sess.DraftMsg, sess.MsgID)
+		}
 		if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, id); err != nil {
 			return err
 		}
 		r.Screen.Delete(ctx, in.ChatID, in.UserMsgID)
 		return nil
+	}
+	if sess.DraftMsg > 0 && sess.DraftMsg != sess.MsgID {
+		if err := r.Screen.EditPlain(ctx, in.ChatID, sess.DraftMsg, text, kb); err == nil {
+			if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, 0); err != nil {
+				return err
+			}
+			return r.Screen.ClearNoise(ctx, in.ChatID, in.UserMsgID)
+		}
+		id, err := r.Screen.SendPlain(ctx, in.ChatID, text, &kb)
+		if err != nil {
+			return fmt.Errorf("confirm screen: %w", err)
+		}
+		r.Screen.DropDraft(ctx, in.ChatID, in.Actor, sess.DraftMsg, sess.MsgID)
+		if err := r.Sessions.SetDraft(ctx, in.ChatID, phrase, id); err != nil {
+			return err
+		}
+		return r.Screen.ClearNoise(ctx, in.ChatID, in.UserMsgID)
 	}
 	if err := r.Screen.EditFunctional(ctx, in.ChatID, sess.MsgID, text, kb); err != nil {
 		if !screen.Gone(err) {
@@ -249,6 +300,10 @@ func (r *Router) Confirm(ctx context.Context, q cb.Query, action string) error {
 	}
 	if q.Group && sess.WaitingUser != 0 && q.Actor != sess.WaitingUser {
 		r.Screen.Toast(ctx, q.ID, screen.Busy(sess.WaitingName, sess.WaitingUser))
+		return nil
+	}
+	if !sameCard(q, sess) {
+		r.Screen.Toast(ctx, q.ID, "Эта карточка уже не действует")
 		return nil
 	}
 	if action == "again" {
@@ -312,18 +367,29 @@ func (r *Router) repaint(ctx context.Context, q cb.Query, waiting string, ask bo
 			Actor: q.Actor, CallbackID: q.ID, EphemeralID: q.EphemeralID,
 		}, body, &kb)
 		if err != nil {
-			h := text
-			if _, plainErr := r.Screen.SendPlain(ctx, q.ChatID, h, &kb); plainErr != nil {
+			id, plainErr := r.Screen.SendPlain(ctx, q.ChatID, text, &kb)
+			if plainErr != nil {
 				return fmt.Errorf("prompt: %w", err)
 			}
+			if err := r.Sessions.SetDraft(ctx, q.ChatID, "", id); err != nil {
+				return err
+			}
+			r.Screen.DeleteEphemeral(ctx, q.ChatID, q.Actor, q.EphemeralID)
 		}
 		r.Screen.Toast(ctx, q.ID, "")
 		return nil
 	}
 	if q.Group {
 		if err := r.Screen.EditPlain(ctx, q.ChatID, q.MessageID, text, kb); err != nil {
-			if _, plainErr := r.Screen.SendPlain(ctx, q.ChatID, text, &kb); plainErr != nil {
+			id, plainErr := r.Screen.SendPlain(ctx, q.ChatID, text, &kb)
+			if plainErr != nil {
 				return fmt.Errorf("prompt: %w", err)
+			}
+			if id != q.MessageID {
+				r.Screen.Delete(ctx, q.ChatID, q.MessageID)
+			}
+			if err := r.Sessions.SetDraft(ctx, q.ChatID, "", id); err != nil {
+				return err
 			}
 		}
 		r.Screen.Toast(ctx, q.ID, "")
@@ -343,10 +409,16 @@ func (r *Router) Rollback(ctx context.Context, chatID int64) error {
 	}
 	waiting := sess.WaitingFor
 	msgID := sess.MsgID
+	draftMsg := sess.DraftMsg
+	actor := sess.WaitingUser
+	r.Screen.DropDraft(ctx, chatID, actor, draftMsg, msgID)
 	if err := r.Sessions.ClearWaiting(ctx, chatID); err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return err
 	}
 	if waiting == "" {
+		return nil
+	}
+	if chatID > 0 && waiting == domain.WaitError && draftMsg > 0 && draftMsg != msgID {
 		return nil
 	}
 	if chatID < 0 {
@@ -375,6 +447,17 @@ func (r *Router) Rollback(ctx context.Context, chatID int64) error {
 		return r.Screen.SendCommand(ctx, chatID, text, kb)
 	}
 	return nil
+}
+
+func sameCard(q cb.Query, sess domain.Session) bool {
+	switch {
+	case sess.DraftMsg < 0:
+		return q.EphemeralID != 0 && q.EphemeralID == -sess.DraftMsg
+	case sess.DraftMsg > 0:
+		return q.MessageID == sess.DraftMsg
+	default:
+		return true
+	}
 }
 
 func who(editor string, id int64) string {
@@ -418,6 +501,16 @@ func (r *Router) commitReport(ctx context.Context, in Incoming, phrase string) e
 		}
 		board, boardKB := view.GroupBoard(user)
 		return r.showBoard(ctx, in.ChatID, sess.MsgID, board, boardKB)
+	}
+	if sess.DraftMsg > 0 && sess.DraftMsg != sess.MsgID {
+		note, _ := view.ErrorThanks()
+		if err := r.Screen.EditPlain(ctx, in.ChatID, sess.DraftMsg, note, models.InlineKeyboardMarkup{}); err != nil {
+			if _, plainErr := r.Screen.SendPlain(ctx, in.ChatID, note, nil); plainErr != nil {
+				return fmt.Errorf("thanks screen: %w", err)
+			}
+			r.Screen.Delete(ctx, in.ChatID, sess.DraftMsg)
+		}
+		return nil
 	}
 	err = r.Screen.EditFunctional(ctx, in.ChatID, sess.MsgID, thanks, kb)
 	if err != nil && !screen.Gone(err) {
