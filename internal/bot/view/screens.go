@@ -100,9 +100,11 @@ func Settings(user domain.User, private bool) (string, models.InlineKeyboardMark
 		toggleData = "set-notifications-false"
 		toggleHint = "отключить"
 	}
+	apiChange := ""
 	apiLine := ""
 	if private {
-		apiLine = "🔗 <b>API</b> — адрес, куда после тревоги уходит текст сообщения\n"
+		apiChange = "\n• Отправить ту же тревогу в умный дом или на свой адрес"
+		apiLine = "🔗 <b>API</b> — отправить тревогу туда, где её прочитает умный дом или ваша программа\n"
 	}
 	text := fmt.Sprintf(`⚙️ <b>Настройки</b>
 
@@ -115,13 +117,13 @@ func Settings(user domain.User, private bool) (string, models.InlineKeyboardMark
 <b>Что вы можете изменить:</b>
 • Выбрать конкретные регионы для отслеживания угроз
 • Включить или отключить получение уведомлений
-• Изменить список локаций в любое время
+• Изменить список локаций в любое время%s
 
 <b>Кнопки настроек:</b>
 📍 <b>Локации</b> — изменить список отслеживаемых регионов
 %s <b>Уведомления</b> — %s оповещения о новых угрозах
 %s❤️ <b>Поддержать проект</b> — поддержать проект чаевыми по ссылке
-`, locs, editorLine, notifMark, notifState, notifMark, toggleHint, apiLine)
+`, locs, editorLine, notifMark, notifState, apiChange, notifMark, toggleHint, apiLine)
 
 	rows := [][]models.InlineKeyboardButton{
 		row(dataBtn("📍 Локации", "set-locations")),
@@ -186,7 +188,12 @@ func APIMenu(user domain.User) (string, models.InlineKeyboardMarkup) {
 	rows = append(rows, row(dataBtn("⬅️ Назад", "get-settings")))
 	text := fmt.Sprintf(`🔗 <b>API</b>
 
-После тревоги бот отправляет текст сообщения на ваш адрес.
+Тот же текст тревоги, который уже пришёл в Telegram, можно отправить и на ваш адрес.
+
+<b>Зачем это нужно:</b>
+• Умный дом включает свет, сирену или произносит тревогу
+• Свой сервер пересылает текст дальше: на табло, в почту, в другой сервис
+• Скрипт просто сохраняет тревоги у себя
 
 <b>Запрос:</b>
 • Метод: <code>POST</code>
